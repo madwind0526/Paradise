@@ -239,6 +239,9 @@ const photoMat = new THREE.ShaderMaterial({
       // (Computed per pixel: per vertex, the two ends of the wall would be interpolated and the whole picture stretched.)
       float v = clamp((vUv.y * (uH + uE) - uE) / uH, 0.0, 1.0);
       vec4 c = texture2D(uTex, vec2(vUv.x, v));
+      // Below the picture the stretched last row would show as vertical streaks: blend into a blurred (high mip) version of it instead.
+      float below = max(0.0, uE - vUv.y * (uH + uE));
+      c = mix(c, texture2D(uTex, vec2(vUv.x, 0.0), 6.0), smoothstep(0.0, 1.0, below));
       float a = c.a * smoothstep(0.0, 0.1, min(vUv.x, 1.0 - vUv.x)); // the sky is already cut out of the picture (alpha)
       vec3 col = c.rgb * (0.62 + 0.7 * uLight);
       col = mix(col, uHaze * 0.5, 0.12 * (1.0 - uLight));            // a little sky color in the dark
