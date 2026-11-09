@@ -1,9 +1,11 @@
+# MAP PICTURE, step 3 of 3. Run:  python 3-cut-sky.py anime_m anime_out maldives hawaii   -> anime_out/<name>.webp (copy to public/resorts).
 # Cut the sky out of a panorama whose sky Qwen Image Edit replaced with flat magenta (#ff00ff).
 # Magenta is used (not green) because the scenery is full of green leaves. The matte is soft, so leaf edges stay clean.
 import sys, os, json, numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
 
+REPAIR = {"hawaii"}                                                 # pictures where Qwen painted magenta patches on the scenery itself (a mountain peak): repaired below
 STRICT = {"bali"}                                                   # pictures whose far haze is magenta-tinted: cut less so that the distant volcano stays
 
 def key(path, name=""):
@@ -21,7 +23,7 @@ def key(path, name=""):
     near_sky = ndi.binary_dilation(sky, iterations=10)
     sizes = ndi.sum(np.ones_like(lab), lab, range(1, n + 1))
     for i, v in enumerate(sizes, 1):
-        if v > (150 if strict else 40) and ratio[lab == i].mean() > (0.8 if strict else 0.6) and near_sky[lab == i].any():
+        if v > (150 if strict else 40) and ratio[lab == i].mean() > (0.8 if strict else 0.6) and (near_sky[lab == i].any() or name not in REPAIR):
             sky |= lab == i
     region = ndi.binary_dilation(sky, iterations=3)                 # the sky plus its anti-aliased rim
     alpha = np.where(region, 1.0 - np.clip(((ratio - 0.25) / 0.6 if strict else (ratio - 0.12) / 0.5), 0, 1), 1.0)
@@ -37,7 +39,7 @@ def key(path, name=""):
     idx = ndi.distance_transform_edt(band, return_distances=False, return_indices=True)
     f[band] = f[idx[0], idx[1]][band]
     # stray magenta (not sky): replace it by the color of the nearest clean pixel
-    stray = (ratio > 0.6) & ~band & ~sky
+    stray = (ratio > 0.5) & (lo > 140) & ~band & ~sky & (name in REPAIR)   # Qwen's paint on a peak is often a paler pink than the sky              # only bright, saturated magenta: dark purple shadows are real
     stray = ndi.binary_dilation(stray, iterations=2) & ~sky
     if stray.any():
         clean = ~stray & ~sky

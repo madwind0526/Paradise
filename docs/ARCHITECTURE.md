@@ -17,7 +17,7 @@ browser                                   server (server/index.mjs)
 
 Everything is in front of one fixed camera: the view cannot be dragged or moved.
 
-- **Sky**: three.js `Sky` (physical, with clouds) by day; a dome shader at night with NASA's star map, the moon, moonlit clouds and meteors. Optional sky photos replace both (mirrored sideways so there is no seam). A haze dome softens the horizon.
+- **Sky**: three.js `Sky` (physical, with clouds) by day; a dome shader at night with NASA's star map, an anime moon picture, moonlit clouds and meteors. The moon is large and crosses the view once a night (rises on the right at 18:00, about 15 degrees high at midnight, sets on the left at 06:00), so it always stays on the screen. Optional sky photos replace both (mirrored sideways so there is no seam). A haze dome softens the horizon.
 - **Cloud deck**: a huge plane with a drifting noise shader (`deckMat`) that fades into the horizon haze. It is shown only on a map without a panorama.
 - **Panorama wall** (`photoMat`): a 160 degree cylinder 150 m away carrying the map's picture. The picture has its sky cut out (alpha), so the real sky shows above the scenery; light and night tint it. Its sea line is aligned to the camera height (`scenery.horizon`).
 - **Mountains** (`mountainMat`): optional hazy strips (far, middle, near) behind the panorama, standing on its sea line.

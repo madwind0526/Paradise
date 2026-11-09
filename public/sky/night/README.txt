@@ -1,9 +1,5 @@
-Put night-sky pictures here (jpg, png or webp). The app picks them up automatically.
+Night-sky pictures (jpg, png or webp). The app picks them up automatically.
 
-- Several pictures are fine: each time the night starts (dusk for night, dawn for day) one of them is drawn at random.
-  With no picture here, the built-in sky is used.
-- A picture is shown as a window on the sky: its bottom edge is the horizon, its top edge is 55 degrees up,
-  and it repeats mirrored sideways. Crop to the sky only: no ground, trees or mountains.
-- Photos at about 3:2 look natural. Large images are fine, but 2000 px wide is plenty.
+- Each time the night starts one of them is drawn at random. With no picture here, the built-in sky is used.
+- Same rules as public/sky/day: the bottom edge is the horizon, the top edge is 55 degrees up, it repeats mirrored sideways, sky only.
 - Pictures must not show a moon: the app draws its own (silver, sometimes red), and the picture repeats mirrored, so a moon in it would appear twice.
-- Use only pictures you have the right to use.

@@ -11,8 +11,9 @@
 | `public/maps/*.json` | the six built-in maps (Maldives, Hawaii, Bali, Bora Bora, Thai beach, Ha Long Bay) | the author's own |
 | `public/maps/added/` | maps you add in the app (json + card jpg) | yours |
 | `public/sounds/` | wind, crickets, forest recordings | CC0 (OpenGameArt, see `CREDITS.txt`) |
-| `public/sky/starmap.jpg`, `moon.jpg` | NASA star map and moon | public domain |
-| `public/sky/day`, `night` | sky photos picked at random at every dusk and dawn | collected from Pinterest by the author; replace them with your own if you publish or share this project |
+| `public/sky/starmap.jpg` | NASA star map | public domain |
+| `public/sky/moon.jpg` | the anime moon: a full moon seen straight on, its disc filling the picture | generated for this project (Krea 2 Turbo) |
+| `public/sky/day`, `night`, `aurora` | anime sky pictures (7 each) picked at random at every dusk and dawn; the aurora ones are used by maps whose `sky.nightPhotos` is `aurora` | generated for this project |
 
 No third-party photograph or 3D model is bundled.
 
@@ -29,6 +30,10 @@ Everything is made on the author's PC with a local ComfyUI (`http://127.0.0.1:81
 1. `1-gen-figure.mjs`: Krea 2 Turbo draws the figure seen from behind on a flat green background. Edit `SCENES` for a new seat.
 2. `2-remove-shadow.mjs`: Qwen Image Edit (2511, lightning, 4 steps) removes the cast shadow and flattens the green. Putting "no shadow" in the prompt does not work with the Turbo models (cfg 1, no negative prompt).
 3. `3-cut-figure.mjs`: the ComfyUI-RMBG `BiRefNetRMBG` node (BiRefNet-matting) gives a real alpha matte. Crop to the subject, make it square, save a 768 px WebP in `public/figures`. Keep figures free of baked shadows: the app tints the picture by the time of day.
+
+### A sky picture
+
+Tall (896x1600) anime skies from Krea 2 Turbo, sky only, no sun, no moon, no ground. They follow the earlier photo-like set: each of the old pictures was analyzed (cloud type, colors, light) and rewritten as an anime prompt in `1-gen-sky.mjs`. VideoStudioOM's QwenVL "describe image" module can do the analysis automatically (`scripts/figures/describe.mjs`; it needs about 2 minutes per picture on this PC, so the prompts were written from the pictures directly). Day: scattered cumulus, big billowing clouds, cirrus streaks, a cumulus tower, peach sunset clouds, violet dusk clouds, a twilight gradient. Night: milky way and purple, teal, turquoise, red and yellow nebulae, moonlit clouds. Aurora: seven different curtains and ribbons.
 
 ### A map picture
 

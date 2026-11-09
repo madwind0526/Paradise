@@ -41,7 +41,7 @@ moonMap.colorSpace = THREE.SRGBColorSpace;
 const nightMat = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending,
   uniforms: {
-    uMoon: { value: new THREE.Vector3() }, uMoonSize: { value: 0.09 }, uMoonTint: { value: new THREE.Vector3(0.9, 0.97, 1.1) }, uMoonGlow: { value: new THREE.Vector3(0.45, 0.62, 1.0) }, uStars: { value: 1 }, uNight: { value: 0 }, uTime: { value: 0 }, uCloud: { value: 0.5 }, uAurora: { value: 0 },
+    uMoon: { value: new THREE.Vector3() }, uMoonSize: { value: 0.15 }, uMoonTint: { value: new THREE.Vector3(0.9, 0.97, 1.1) }, uMoonGlow: { value: new THREE.Vector3(0.45, 0.62, 1.0) }, uStars: { value: 1 }, uNight: { value: 0 }, uTime: { value: 0 }, uCloud: { value: 0.5 }, uAurora: { value: 0 },
     uMap: { value: starMap }, uMoonMap: { value: moonMap }, uRot: { value: new THREE.Matrix3() },
     uPhoto: { value: null as THREE.Texture | null }, uPhotoOn: { value: 0 }, uPhotoAspect: { value: 1.5 },
   },
@@ -79,7 +79,7 @@ const nightMat = new THREE.ShaderMaterial({
       float v = on * (s + cross_) * (0.35 + 0.65 * hash(q.zx + 7.0));
       return v * mix(vec3(0.7, 0.82, 1.0), vec3(1.0, 0.9, 0.75), hash(q.xz + 11.0));
     }
-    // The moon: real surface detail, a tint (silver or red) and a glow. Also used over a night picture.
+    // The moon: an anime moon picture, a tint (silver or red) and a glow. Also used over a night picture.
     vec3 addMoon(vec3 col, vec3 d){
       float md = dot(d, uMoon);
       vec3 mz = uMoon;
@@ -88,12 +88,12 @@ const nightMat = new THREE.ShaderMaterial({
       vec2 mp = vec2(dot(d, mx), dot(d, my)) / uMoonSize;
       float mr = length(mp);
       if (md > 0.0 && mr < 1.0) {
-        float z = sqrt(1.0 - mr * mr);
-        vec3 n = vec3(mp, z);
-        vec2 muv = vec2(atan(n.x, n.z) / 6.2831853 + 0.5, asin(clamp(n.y, -1.0, 1.0)) / 3.1415927 + 0.5);
-        col = mix(col, texture2D(uMoonMap, muv).rgb * uMoonTint * pow(z, 0.3) * 1.7, smoothstep(1.0, 0.94, mr));
+        // The moon picture is an anime moon seen straight on: its disc fills the picture.
+        vec2 muv = mp * 0.5 + 0.5;
+        col = mix(col, texture2D(uMoonMap, muv).rgb * uMoonTint * 0.5, smoothstep(1.0, 0.97, mr));
       }
-      col += uMoonGlow * (0.55 * exp(-max(mr - 1.0, 0.0) * 5.0) * step(0.0, md) * smoothstep(0.0, 0.2, mr) + 0.12 * pow(max(md, 0.0), 120.0));
+      // A faint glow only outside the rim, and a disc dimmer than the bloom threshold: the moon stays crisp instead of hazy.
+      col += uMoonGlow * (0.22 * exp(-max(mr - 1.0, 0.0) * 9.0) * step(0.0, md) * smoothstep(0.985, 1.03, mr) + 0.03 * pow(max(md, 0.0), 120.0));
       return col;
     }
     void main(){
@@ -272,7 +272,7 @@ const figureMat = new THREE.ShaderMaterial({
     void main(){
       vec4 c = texture2D(uTex, vUv);
       vec3 col = c.rgb * uWarm * (0.5 + 0.6 * uLight);
-      col *= mix(1.0, 0.25, uNight);
+      col *= mix(vec3(1.0), vec3(0.62, 0.7, 0.9), uNight); // at night the figure stays readable, with a cool moonlit tint
       gl_FragColor = vec4(col * 1.9, c.a); // pre-multiplied like the domes: the output pass tone-maps once
       #include <colorspace_fragment>
     }`,
@@ -570,7 +570,11 @@ export class World {
     u.sunPosition.value.copy(sun);
     u.time.value = this.t;
     u.cloudSpeed.value = 0.00002 * (0.5 + this.windLevel * 2);
-    nightMat.uniforms.uMoon.value.set(-Math.cos(a), -Math.sin(a) * 0.85, -0.6).normalize();
+    // The moon crosses the view once a night: it rises on the right at 18:00, climbs to about 15 degrees at midnight and sets on the left
+    // at 06:00, so it always stays on the screen (a real moon path would carry it far above the top edge).
+    const np = ((((hour - 18) % 24) + 24) % 24) / 12; // 0 at 18:00, 1 at 06:00, up to 2 by day (below the horizon)
+    const az = THREE.MathUtils.degToRad(38 - 76 * np), el = THREE.MathUtils.degToRad(3 + 12 * Math.sin(Math.PI * np));
+    nightMat.uniforms.uMoon.value.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
     if (this.moonOverride) nightMat.uniforms.uMoon.value.copy(this.moonOverride).normalize(); // debugging aid: pin the moon somewhere
     nightMat.uniforms.uNight.value = this.night;
     nightMat.uniforms.uTime.value = this.t;

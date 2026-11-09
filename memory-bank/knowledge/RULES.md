@@ -49,3 +49,8 @@
 
 **Rule:** panoramas and figures are anime illustrations made with Krea 2 and Qwen Image Edit (no photo-real, no 3D toy figures); the resort must make people want to go (palm trees, flowers, sparkling water).
 **Why:** the user said the picture and the figure looked separated, the photo-real resort did not make them want to visit, and asked for anime. They also want Qwen Image Edit (and AI matting) for the cuts, not hand-made heuristics.
+
+## The moon is an anime picture, large, crisp, and moves across the view
+
+**Rule:** public/sky/moon.jpg is an anime moon disc; the moon crosses the visible sky each night and stays below the bloom threshold, with a faint glow only outside the rim. At night the figure stays readable (cool moonlit tint, not dark).
+**Why:** the user asked for a bigger anime moon that moves with the time, that is crisp (not hazy), and for a brighter figure at night.

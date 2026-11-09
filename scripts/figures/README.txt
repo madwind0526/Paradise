@@ -11,3 +11,8 @@ FIGURE (anime person on a seat of the sky)
   2-remove-shadow.mjs    Qwen Image Edit removes the cast shadow            -> anime_fig_qe/fig_<name>.png
   3-cut-figure.mjs       BiRefNet matting gives a real alpha                -> anime_fig_bi/<name>.png
                          then crop to the subject, make it square, save a 768 px WebP in public/figures
+
+  1-gen-sky.mjs          SKY PICTURES: Krea 2 Turbo anime skies (day, night, aurora; 896x1600)
+  describe.mjs           optional: VideoStudioOM QwenVL "describe image" for a reference picture (node describe.mjs out.json files...)
+
+MOON: public/sky/moon.jpg is a Krea 2 Turbo anime full moon on black (1024x1024, prompt: the moon seen straight on as a round disc filling the frame); crop the disc to its bounding box.
