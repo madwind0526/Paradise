@@ -241,8 +241,10 @@ const photoMat = new THREE.ShaderMaterial({
       vec4 c = texture2D(uTex, vec2(vUv.x, v));
       // The last rows of every picture are smeared (a generation artifact): fade them into a blurred sample from a clean row higher up,
       // and use that blurred sample for everything below the picture, so the bottom of the screen is calm instead of streaked.
-      vec4 clean = texture2D(uTex, vec2(vUv.x, 0.05), 4.0);
-      c = mix(clean, c, smoothstep(0.0, 0.05, v));
+      // The further below the picture, the blurrier the fill (its colour only, no leaves or grass left to streak downwards).
+      float below = max(0.0, uE - vUv.y * (uH + uE)) / uH;
+      vec4 clean = texture2D(uTex, vec2(vUv.x, 0.1), 7.0 + 2.0 * smoothstep(0.0, 0.08, below));
+      c = mix(clean, c, smoothstep(0.0, 0.1, v));
       float a = c.a * smoothstep(0.0, 0.1, min(vUv.x, 1.0 - vUv.x)); // the sky is already cut out of the picture (alpha)
       vec3 col = c.rgb * (0.62 + 0.7 * uLight);
       col = mix(col, uHaze * 0.5, 0.12 * (1.0 - uLight));            // a little sky color in the dark
