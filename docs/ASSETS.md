@@ -45,3 +45,7 @@ Tall (896x1600) anime skies from Krea 2 Turbo, sky only, no sun, no moon, no gro
 1. `1-gen-panorama.mjs`: Krea 2 Turbo, 1792x768, an anime beach with palm trees framing the sides, sparkling water and flowers; buildings tiny and far away, a clear simple sky at the top.
 2. `2-sky-to-magenta.mjs`: Qwen Image Edit paints the whole sky (and the gaps between the leaves) flat magenta. Magenta, not green, because the scenery is full of green leaves.
 3. `3-cut-sky.py`: turns the magenta into transparency with a soft matte, so the palm leaves stay clean. Copy the WebP to `public/resorts/<name>.webp`, make a square crop `<name>-card.jpg`, and add `public/maps/<name>.json` (see `docs/spec.md`; `scenery.stand` is the row of the picture, from the top, where the sand is). Add the id to `BUILTIN_MAPS` in `src/main.ts` and to the list in `test/spec.test.mjs`.
+
+## Store images
+
+`node scripts/store-gen.mjs` makes five Krea 2 Turbo anime backdrops (`store/gen/bg-*.png`, needs ComfyUI); the app is captured at 720x1280 (device scale 2) into `store/screenshots/`; `python scripts/store-mockup.py` puts the screenshots in phone frames over the backdrops: `store/promo/promo-*-720x1280.png` (four store screenshots with a headline) and `store/feature-1024x500.png` (feature graphic).
