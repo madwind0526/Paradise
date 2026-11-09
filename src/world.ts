@@ -370,7 +370,7 @@ export class World {
     c.addEventListener("pointerdown", (e) => { last = e.clientY; try { c.setPointerCapture(e.pointerId); } catch { /* a synthetic event has no active pointer */ } });
     c.addEventListener("pointermove", (e) => {
       if (last === null) return;
-      this.tilt = Math.min(0.8, Math.max(-0.12, this.tilt + (e.clientY - last) * 0.004)); // drag down: look up, like pulling the sky down
+      this.tilt = Math.min(0.1, Math.max(-0.12, this.tilt + (e.clientY - last) * 0.004)); // drag down: look up, like pulling the sky down; up to 6 degrees, so the whole upper body of the figure stays on the screen
       last = e.clientY;
     });
     const end = () => (last = null);

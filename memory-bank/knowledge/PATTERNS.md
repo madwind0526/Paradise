@@ -41,7 +41,7 @@ Krea 2 draws the anime panorama (1792x768). Qwen Image Edit paints the whole sky
 
 ## Tilting the view without moving the world
 
-Keep the camera position fixed and move only the `lookAt` height: `lookAtY = camY - 0.575 + 11.94 * tan(tilt)` (the resting view looks 2.8 degrees down; 11.94 m is the horizontal distance to the look-at point). The panorama is placed for the resting view, so tilting never moves the scenery relative to the figure. The sky pictures cover 55 degrees; mirror the picture row above that (`v = 1 - abs(1 - elevation/55deg)`) instead of clamping it (a clamp stretches the last row into streaks). Tilt up to about 0.8 rad. Drag events: down means look up; ignore `clientX`.
+Keep the camera position fixed and move only the `lookAt` height: `lookAtY = camY - 0.575 + 11.94 * tan(tilt)` (the resting view looks 2.8 degrees down; 11.94 m is the horizontal distance to the look-at point). The panorama is placed for the resting view, so tilting never moves the scenery relative to the figure. The sky pictures cover 55 degrees; mirror the picture row above that (`v = 1 - abs(1 - elevation/55deg)`) instead of clamping it (a clamp stretches the last row into streaks). Tilt up to only 0.1 rad (6 degrees): the figure stands near the bottom of the screen and leaves it when the view is tilted further up (the user asked for a small range). Drag events: down means look up; ignore `clientX`.
 
 ## Testing the scene quickly
 

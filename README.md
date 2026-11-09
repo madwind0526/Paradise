@@ -22,7 +22,7 @@ Other build scripts: `npm run app:build` (Android web copy) and `npm run desktop
 - **Six maps** (Maldives, Hawaii, Bali, Bora Bora, Thai beach, Ha Long Bay): an anime panorama with its sky cut out, so the real sky, sun, moon and stars show behind the scenery. Add your own with the "+" card in the settings, or author them on the PC in `/studio.html`. Map JSON is `paradise.map/1`.
 - **Ten figures** in `public/figures`: pictures with a transparent background. Pick one in the profile pop-up; drop a new picture in the folder to offer it. All but the sun lounger float and sway.
 - **Skies**: 7 day, 7 night and 7 aurora pictures (anime), picked at random at every dusk and dawn; an anime moon that rises on the right, climbs and sets on the left.
-- The view cannot be turned sideways; drag up and down to tilt it and look at more sky. The UI is Korean.
+- The view cannot be turned sideways; drag up and down to tilt it a little (the figure always stays on the screen). The UI is Korean.
 - **Making a map**: hand `map 제작.md` to an LLM ("make a ... map") and import the JSON with the "+" card; `docs/spec.md` has the format.
 
 ## Pictures
