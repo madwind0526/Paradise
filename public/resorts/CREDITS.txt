@@ -1,0 +1,4 @@
+Paradise pictures
+
+All map panoramas and figures were generated locally in ComfyUI (Krea 2 Turbo, Qwen Image Edit 2511, BiRefNet matting) for this project.
+No third-party photographs are bundled.

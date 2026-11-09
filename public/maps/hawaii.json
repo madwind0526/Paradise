@@ -1,0 +1,24 @@
+{
+  "schema": "paradise.map/1",
+  "name": "하와이",
+  "author": "Paradise",
+  "thumb": "/resorts/hawaii-card.jpg",
+  "sky": {
+    "clouds": 0.4,
+    "haze": 0.15,
+    "blue": 0.75,
+    "stars": 1,
+    "nightPhotos": "night"
+  },
+  "scenery": {
+    "photo": "/resorts/hawaii.webp",
+    "mountains": "",
+    "horizon": 0.33,
+    "cloud": "#f6f9ff"
+  },
+  "ambience": {
+    "wind": 0.4,
+    "birds": 0.45,
+    "insects": 0.35
+  }
+}

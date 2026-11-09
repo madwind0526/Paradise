@@ -1,0 +1,24 @@
+{
+  "schema": "paradise.map/1",
+  "name": "보라보라",
+  "author": "Paradise",
+  "thumb": "/resorts/borabora-card.jpg",
+  "sky": {
+    "clouds": 0.4,
+    "haze": 0.15,
+    "blue": 0.75,
+    "stars": 1,
+    "nightPhotos": "night"
+  },
+  "scenery": {
+    "photo": "/resorts/borabora.webp",
+    "mountains": "",
+    "horizon": 0.57,
+    "cloud": "#f6f9ff"
+  },
+  "ambience": {
+    "wind": 0.4,
+    "birds": 0.45,
+    "insects": 0.35
+  }
+}

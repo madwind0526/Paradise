@@ -1,0 +1,88 @@
+import { FIGURES, defaultFigure } from "./figures";
+import type { MapSpec } from "./types";
+import { validateMap } from "../shared/spec.mjs";
+
+export interface Settings {
+  name: string;
+  figure: string; // id from figures.ts
+  tz: string;
+  cycle: number; // hours for one full day-night loop: 24, 12, 8 or 6
+  playlist: string[];
+  lastSky: Record<string, string>; // the previous sky pictures, so they are not repeated
+  critters: boolean; // birds and insects in the ambience
+  shuffle: boolean;
+  repeat: "off" | "one" | "all";
+  musicVol: number;
+  ambientVol: number;
+  mapId: string;
+  maps: Record<string, MapSpec>;
+  pictures: Record<string, string>; // card pictures by map content, kept after a map is deleted so adding it again reuses its picture
+  musicPath: string; // folder or playlist file chosen in the built-in explorer ("" = none)
+  musicKind: "dir" | "list" | "phone"; // "phone": a folder of this phone (Android app), musicPath is "phone:<relative folder>"
+  eq: number[]; // 10 bands, -100..100
+  eqPreset: string;
+}
+
+const KEY = "paradise.settings";
+let saveTimer = 0;
+const defaults: Settings = {
+  name: "", figure: "sunbed", tz: "auto", cycle: 24, playlist: [], lastSky: {}, critters: false, shuffle: true, repeat: "all", musicVol: 0.6, ambientVol: 0.6,
+  musicPath: "", musicKind: "dir", eq: Array(10).fill(0), eqPreset: "Flat",
+  mapId: "maldives", maps: {}, pictures: {},
+};
+
+/** Repairs settings that came from storage or the server: a bad number or a broken map must not take the app down. */
+export function normalize(s: Settings) {
+  if (!Number.isFinite(s.cycle) || s.cycle <= 0) s.cycle = 24;
+  if (!Array.isArray(s.eq) || s.eq.length !== 10 || s.eq.some((x) => !Number.isFinite(x))) s.eq = Array(10).fill(0);
+  if (!s.maps || typeof s.maps !== "object" || Array.isArray(s.maps)) s.maps = {};
+  for (const [id, m] of Object.entries(s.maps)) {
+    const r: any = validateMap(m);
+    if (!r.ok) delete s.maps[id];
+    else s.maps[id] = { ...r.value, id, ...(typeof m.thumb === "string" && m.thumb.startsWith("data:image/jpeg") ? { thumb: m.thumb } : {}) };
+  }
+  if (!s.pictures || typeof s.pictures !== "object" || Array.isArray(s.pictures)) s.pictures = {};
+  if (!Array.isArray(s.playlist)) s.playlist = [];
+  if (!s.lastSky || typeof s.lastSky !== "object") s.lastSky = {};
+  return s;
+}
+
+export function load(): Settings {
+  try {
+    const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}") ?? {};
+    const s = { ...defaults, ...stored };
+    if (typeof s.figure !== "string" || !s.figure) s.figure = defaultFigure(); // an id the server adds later is checked after the list is fetched
+    return normalize(s);
+  } catch {
+    return { ...defaults };
+  }
+}
+
+export function save(s: Settings) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch {
+    /* storage blocked: settings last for this session only */
+  }
+  clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    void fetch("/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).catch(() => {});
+  }, 250);
+}
+
+export async function restore(s: Settings) {
+  try {
+    const response = await fetch("/api/settings");
+    if (!response.ok) return;
+    const stored = await response.json();
+    if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+      Object.assign(s, stored);
+      normalize(s);
+      localStorage.setItem(KEY, JSON.stringify(s));
+    } else if (localStorage.getItem(KEY)) {
+      save(s);
+    }
+  } catch {
+    // Keep the local copy when the settings API is unavailable.
+  }
+}

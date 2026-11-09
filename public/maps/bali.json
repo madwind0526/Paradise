@@ -1,0 +1,24 @@
+{
+  "schema": "paradise.map/1",
+  "name": "발리",
+  "author": "Paradise",
+  "thumb": "/resorts/bali-card.jpg",
+  "sky": {
+    "clouds": 0.4,
+    "haze": 0.15,
+    "blue": 0.75,
+    "stars": 1,
+    "nightPhotos": "night"
+  },
+  "scenery": {
+    "photo": "/resorts/bali.webp",
+    "mountains": "",
+    "horizon": 0.52,
+    "cloud": "#f6f9ff"
+  },
+  "ambience": {
+    "wind": 0.4,
+    "birds": 0.45,
+    "insects": 0.35
+  }
+}
