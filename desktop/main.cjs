@@ -9,7 +9,8 @@ process.env.HOST = "127.0.0.1";
 process.env.PARADISE_WWW = path.join(__dirname, "..", "desktop-www");
 process.env.PARADISE_DATA = path.join(app.getPath("userData"), "data");
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit(); // a second instance only quits; it must not start a server or window
 
 async function createWindow() {
   const wa = screen.getPrimaryDisplay().workAreaSize;
@@ -23,6 +24,7 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (!gotLock) return;
   try {
     await import(pathToFileURL(path.join(__dirname, "..", "server", "index.mjs")).href);
     await createWindow();

@@ -8,7 +8,7 @@
 | `public/resorts/<name>.webp` | the anime map panoramas, sky cut out (alpha) | generated for this project |
 | `public/resorts/<name>-card.jpg` | square card pictures of the maps | generated for this project |
 | `public/maps/*.json` | the six built-in maps (Maldives, Hawaii, Bali, Bora Bora, Thai beach, Ha Long Bay) | the author's own |
-| `public/maps/added/` | maps you add in the app (json + card jpg) | yours |
+| `data/maps/added/` (user data, git-ignored) | maps you add in the app (json + card jpg) | yours |
 | `public/sounds/` | wind, crickets, forest recordings | CC0 (OpenGameArt, see `CREDITS.txt`) |
 | `public/sky/starmap.jpg` | NASA star map | public domain |
 | `public/sky/moon.jpg` | the anime moon: a full moon seen straight on, its disc filling the picture | generated for this project (Krea 2 Turbo) |

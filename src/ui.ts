@@ -18,10 +18,3 @@ export function btn(icon: IconNode, label: string, fn: () => void, cls = ""): HT
   b.onclick = fn;
   return b;
 }
-
-export function swatch(colors: string[], top?: string): HTMLElement {
-  const d = h("div", "sw");
-  const stops = colors.map((c, i) => `${c} ${(i / colors.length) * 100}% ${((i + 1) / colors.length) * 100}%`).join(",");
-  d.style.background = top ? `linear-gradient(${top} 50%, ${colors[0]} 50%)` : `linear-gradient(90deg, ${stops})`;
-  return d;
-}

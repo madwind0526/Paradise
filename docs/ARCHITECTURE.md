@@ -7,7 +7,7 @@ Paradise is a single-page app (`index.html` + `src/main.ts`) with a PC authoring
 ```
 browser                                   server (server/index.mjs)
  main.ts    HUD, modals, clock loop  ---> /api/settings      saved settings (data/settings.json)
- world.ts   three.js scene           ---> /api/maps/*        maps added in the app -> public/maps/added
+ world.ts   three.js scene           ---> /api/maps/*        maps added in the app -> data/maps/added
  figures.ts the pictures to choose   ---> /api/figures       list of public/figures
  audio.ts   music + ambience         ---> /api/sky/<folder>  list of sky pictures (day, night, aurora)
  shared/spec.mjs  map validator      ---> /api/fs/*          local music explorer (loopback only)
@@ -35,7 +35,7 @@ Two `<audio>` elements (one through a 10-band EQ graph, one direct), a YouTube I
 
 ## Maps, figures and content
 
-`shared/spec.mjs` validates map JSON. The `+` card in settings imports a map file, keeps it in `localStorage` and in the server's `public/maps/added/`, and takes a card picture with `World.snapshot()`. See `docs/spec.md`. Figures, panoramas, skies and the moon are generated with local AI tools and cut out with scripts: see `docs/ASSETS.md`.
+`shared/spec.mjs` validates map JSON. The `+` card in settings imports a map file, keeps it in `localStorage` and in the server's data folder (`data/maps/added/`, next to `settings.json`), and takes a card picture with `World.snapshot()`. See `docs/spec.md`. Figures, panoramas, skies and the moon are generated with local AI tools and cut out with scripts: see `docs/ASSETS.md`.
 
 ## Server
 

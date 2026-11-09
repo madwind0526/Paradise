@@ -20,7 +20,7 @@ const MIME = {
   ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json",
   ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".mp3": "audio/mpeg", ".ogg": "audio/ogg", ".txt": "text/plain",
 };
-const MAX_ADDED_MAPS = 200; // files in public/maps/added; stops a runaway client from filling the disk
+const MAX_ADDED_MAPS = 200; // saved maps (.json files) in the data folder; stops a runaway client from filling the disk
 
 // Writes must come from this app's own pages as JSON. A cross-site form or fetch (which can send text/plain without a
 // preflight) is refused; Sec-Fetch-Site is set by the browser and cannot be forged by a web page.
@@ -139,9 +139,9 @@ const figureList = () => {
   try { return fs.readdirSync(path.join(PUB, "figures")).filter((f) => /\.(png|webp)$/i.test(f)).sort(); } catch { return []; }
 };
 
-// ---- maps the player added: kept as files in public/maps/added (a card picture sits next to each .json) ----
+// ---- maps the player added: kept as files in <data>/maps/added (a card picture sits next to each .json) ----
 // Removing a map from the app's list never deletes these files.
-const addedDir = path.join(PUB, "maps", "added");
+const addedDir = path.join(DATA, "maps", "added"); // user data: next to settings.json, never inside the (read-only) install folder
 async function addedMapsApi(req, res, action) {
   if (!isLocal(req)) return send(res, 403, { error: "local only" });
   if (req.method !== "POST") return send(res, 405, { error: "method not allowed" });
@@ -149,7 +149,7 @@ async function addedMapsApi(req, res, action) {
   let input;
   try { input = JSON.parse(await readBody(req, 1024 * 1024)); } catch { return send(res, 400, { error: "bad json or payload too large" }); }
   fs.mkdirSync(addedDir, { recursive: true });
-  if (fs.readdirSync(addedDir).length >= MAX_ADDED_MAPS * 2) return send(res, 507, { error: "too many saved maps" });
+  if (fs.readdirSync(addedDir).filter((f) => f.endsWith(".json")).length >= MAX_ADDED_MAPS) return send(res, 507, { error: "too many saved maps" });
   if (action === "save") {
     const r = validateMap(input?.spec);
     if (!r.ok) return send(res, 400, { error: r.error });

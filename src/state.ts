@@ -33,6 +33,13 @@ const defaults: Settings = {
 
 /** Repairs settings that came from storage or the server: a bad number or a broken map must not take the app down. */
 export function normalize(s: Settings) {
+  const str = (k: "name" | "figure" | "tz" | "musicPath" | "eqPreset" | "mapId") => { if (typeof s[k] !== "string") s[k] = defaults[k]; };
+  (["name", "figure", "tz", "musicPath", "eqPreset", "mapId"] as const).forEach(str);
+  for (const k of ["critters", "shuffle"] as const) if (typeof s[k] !== "boolean") s[k] = defaults[k];
+  for (const k of ["musicVol", "ambientVol"] as const) s[k] = Number.isFinite(s[k]) ? Math.min(1, Math.max(0, s[k])) : defaults[k];
+  if (!["off", "one", "all"].includes(s.repeat)) s.repeat = defaults.repeat;
+  if (!["dir", "list", "phone"].includes(s.musicKind)) s.musicKind = defaults.musicKind;
+  for (const k of Object.keys(s)) if (!(k in defaults)) delete (s as any)[k]; // keys left by older versions
   if (!Number.isFinite(s.cycle) || s.cycle <= 0) s.cycle = 24;
   if (!Array.isArray(s.eq) || s.eq.length !== 10 || s.eq.some((x) => !Number.isFinite(x))) s.eq = Array(10).fill(0);
   if (!s.maps || typeof s.maps !== "object" || Array.isArray(s.maps)) s.maps = {};

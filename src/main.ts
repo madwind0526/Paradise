@@ -7,7 +7,6 @@ import { EQ_LABELS, EQ_PRESETS, Sound } from "./audio";
 import { load, normalize, restore, save } from "./state";
 import { dayHour } from "./time";
 import type { MapSpec } from "./types";
-import type { IconNode } from "lucide";
 import { btn, h, ic } from "./ui";
 import { FIGURES, defaultFigure, registerFigures } from "./figures";
 import { World } from "./world";
@@ -44,7 +43,10 @@ async function loadBuiltins() {
   // One missing or broken file must not stop the app: skip it, and fall back to a plain salt map if none loads.
   const done = await Promise.allSettled(BUILTIN_MAPS.map(async (id) => ({ ...(await norm(`/maps/${id}.json`, validateMap)), id })));
   bMaps = done.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
-  if (!bMaps.length) bMaps = [{ ...(validateMap({ schema: "paradise.map/1", name: "몰디브" }) as any).value, id: "maldives" }];
+  if (!bMaps.length) {
+    const r: any = validateMap({ schema: "paradise.map/1", name: "몰디브" });
+    if (r.ok) bMaps = [{ ...r.value, id: "maldives" }];
+  }
 }
 
 function apply() {
@@ -55,6 +57,9 @@ function apply() {
   applyVolumes();
   sound.setEq(s.eq, true);
   sound.setCritters(s.critters);
+  sound.setShuffle(s.shuffle); // the saved settings may have replaced the values read at start-up
+  sound.setRepeat(s.repeat);
+  refreshModes();
 }
 
 // Local picks (folder/m3u) last for this session only: browsers cannot keep file handles in localStorage.
@@ -125,6 +130,7 @@ function refreshSway() {
   swayBtn.replaceChildren(ic(still ? Anchor : Waves));
   swayBtn.classList.toggle("off", forced || !sound.musicOn);
   musicBtn.replaceChildren(ic(sound.musicOn ? Pause : Play)); // the centre button shows what a press will do
+  musicBtn.title = musicBtn.ariaLabel = sound.musicOn ? "일시정지" : "재생";
 }
 hud.append(
   clock,
@@ -183,7 +189,7 @@ function mapKey(m: MapSpec): string {
 }
 const MAX_PICTURES = 30; // old pictures of deleted maps; the oldest go first
 
-const mapFiles = new Map<string, string>(); // map id -> its file name in public/maps/added (this session)
+const mapFiles = new Map<string, string>(); // map id -> its file name in data/maps/added (this session)
 let onPicture: () => void = () => {}; // set by the open settings pop-up so its cards refresh when a picture is ready
 function capturePicture(id: string) {
   const m = s.maps[id];
@@ -218,7 +224,7 @@ function addMap(text: string): string {
   const fileBody = JSON.stringify({ spec: { ...r.value } }); // the file keeps the map exactly as given, without the name added below
   if (!r.value.author && s.name) r.value.author = s.name;
   s.maps[id] = { ...r.value, id };
-  // Keep the map as a file too: deleting it from the list later leaves the file in public/maps/added.
+  // Keep the map as a file too: deleting it from the list later leaves the file in data/maps/added.
   void fetch("/api/maps/save", { method: "POST", headers: { "content-type": "application/json" }, body: fileBody })
     .then((res) => res.json()).then((x) => { if (x.file) { mapFiles.set(id, x.file); const th = s.maps[id]?.thumb; if (th) void fetch("/api/maps/picture", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ file: x.file, thumb: th }) }).catch(() => {}); } }).catch(() => {});
   s.mapId = id;
@@ -324,7 +330,7 @@ function openExplorer(kind: "dir" | "list", first: FsList, onPick: (path: string
     return [bar, rows.children.length ? rows : h("div", "empty", "—")];
   });
 }
-const closeTop = () => [...hud.querySelectorAll(".modal")].pop()?.remove();
+const closeTop = () => [...hud.querySelectorAll<HTMLElement>(".modal")].pop()?.querySelector<HTMLButtonElement>(".row.end button")?.click(); // the close button also removes the key listener
 
 const ZONES = ["Asia/Seoul", "Asia/Tokyo", "Asia/Shanghai", "Asia/Kolkata", "Europe/London", "Europe/Paris", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney", "UTC"];
 
@@ -501,7 +507,7 @@ function tick(now: number) {
   last = now;
   if (now - lastSync > 60000) { syncClock(); lastSync = now; }
 
-  const hr = (curMap().sky.hour ?? -1) >= 0 ? curMap().sky.hour : hourNow();
+  const cm = curMap(), hr = (cm.sky.hour ?? -1) >= 0 ? cm.sky.hour : hourNow();
   const still = isStill();
   stamina = Math.min(100, Math.max(0, stamina + (still ? 100 / REFILL_SECONDS : -100 / DRAIN_SECONDS) * dt));
   if (stamina <= 0) forced = true; else if (forced && stamina >= 100) forced = false;
