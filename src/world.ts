@@ -502,11 +502,12 @@ export class World {
       if (low < groundY) cy += groundY - low;
     }
     const f = this.look.floats;
-    const A = this.swayAmt;
-    const bob = f ? 0.1 + A * (0.09 * Math.sin(this.t * 1.1) + 0.04 * Math.sin(this.t * 0.5 + 1)) : 0; // hovers 10 cm above the sand line and sways around that
+    // The lounger rocks too, but gently and without leaving the sand by more than a few centimetres.
+    const A = this.swayAmt * (f ? 1 : 0.5), hover = f ? 0.1 : 0.065;
+    const bob = hover + A * (0.09 * Math.sin(this.t * 1.1) + 0.04 * Math.sin(this.t * 0.5 + 1)); // hovers above the sand line and sways around that
     this.figure.scale.set(S2, S2, 1);
-    this.figure.position.set(cx + (f ? A * 0.03 * Math.sin(this.t * 0.7) : 0), cy + bob, 0);
-    this.figure.rotation.set(0, this.yaw, f ? A * 0.025 * Math.sin(this.t * 0.8) : 0);
+    this.figure.position.set(cx + A * 0.03 * Math.sin(this.t * 0.7), cy + bob, 0);
+    this.figure.rotation.set(0, this.yaw, A * 0.025 * Math.sin(this.t * 0.8));
 
     const target = new THREE.Vector3(0, 0.9, 0);
     const d = this.dist, p = this.pitch;
