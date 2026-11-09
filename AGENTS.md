@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-A stationary, relaxing scene. A small anime picture of a person seen from behind (a "figure": on a sun lounger, a cloud, a flying carpet, a drone, ...) rests on an anime beach panorama whose sky is cut out, under a sky that follows the time of day (anime sky pictures, an anime moon that crosses the view, stars, aurora). Music, menus, settings, persistence and the authoring flow follow Voyager. There is no 3D character and no walking; the view cannot be turned sideways, and dragging up and down only tilts it.
+A stationary, relaxing scene. A small anime picture of a person seen from behind (a "figure": on a sun lounger, a cloud, a flying carpet, a drone, ...) rests on an anime beach panorama whose sky is cut out, under a sky that follows the time of day (anime sky pictures, an anime moon that crosses the view, stars, aurora). Music, menus, settings, persistence and the authoring flow follow Voyager. There is no 3D character and no walking; the view is fixed and cannot be moved in any direction.
 
 ## Tech Stack
 

@@ -17,7 +17,7 @@ Desktop (`desktop/main.cjs`, Electron) and Android (`android/`, Capacitor) wrap 
 
 ## The scene (`src/world.ts`)
 
-Everything is in front of one fixed camera (55 degrees, 6 m from the figure). The view cannot be turned sideways; dragging up and down only **tilts** it (`tilt`, from about 7 degrees down to 6 degrees up, so the figure never leaves the screen) to see a little more sky or ground, the camera itself and everything in the world stay put. Draw order, back to front:
+Everything is in front of one fixed camera (55 degrees, 6 m from the figure). The view is fixed: dragging does nothing (`tilt` stays 0, kept only for `snapshot()` and the sky mirror). Draw order, back to front:
 
 - **Sky**: three.js `Sky` (physical, with clouds) by day. A day picture (anime sky) replaces it until the sun is well below the horizon. A sky picture covers 55 degrees above the horizon; above that it is mirrored, so looking far up shows more sky instead of a stretched last row. At night a dome shader draws NASA's star map, the moon, moonlit clouds and meteors, or a night/aurora picture. A haze dome softens the horizon.
 - **Moon**: an anime picture of a full moon (`public/sky/moon.jpg`, a disc filling the picture). It is round **on the screen**: the shader measures it in the camera's screen plane (right, up and forward vectors, `uCamR/U/F`), so the wide-angle projection does not stretch it into an oval. It crosses the view once a night: rises on the right at 18:00, about 15 degrees high at midnight, sets on the left at 06:00. Its disc stays below the bloom threshold and its glow only starts at the rim, so it stays crisp. One night in four it is red (`setMoonRed`).

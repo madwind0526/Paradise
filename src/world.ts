@@ -271,7 +271,7 @@ export class World {
   camera = new THREE.PerspectiveCamera(55, 1, 0.3, 7000);
   readonly yaw = 0; // the view cannot be turned sideways
   readonly pitch = 0.14;
-  tilt = 0; // radians the view is tilted up (positive) or down (negative) by dragging up and down; the camera itself does not move
+  tilt = 0; // fixed view: nothing changes it any more (kept at 0)
   night = 0;
   sunUp = true;
   moonOverride?: THREE.Vector3;
@@ -346,7 +346,6 @@ export class World {
     this.composer.addPass(new OutputPass());
     this.resize();
     addEventListener("resize", () => this.resize());
-    this.bindTilt();
   }
 
   private makeEnvironment() {
@@ -361,21 +360,6 @@ export class World {
     const pm = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pm.fromScene(envScene).texture;
     pm.dispose();
-  }
-
-  /** Dragging up and down tilts the view (more sky, or more ground); sideways movement is ignored. */
-  private bindTilt() {
-    let last: number | null = null;
-    const c = this.canvas;
-    c.addEventListener("pointerdown", (e) => { last = e.clientY; try { c.setPointerCapture(e.pointerId); } catch { /* a synthetic event has no active pointer */ } });
-    c.addEventListener("pointermove", (e) => {
-      if (last === null) return;
-      this.tilt = Math.min(0.1, Math.max(-0.12, this.tilt + (e.clientY - last) * 0.004)); // drag down: look up, like pulling the sky down; up to 6 degrees, so the whole upper body of the figure stays on the screen
-      last = e.clientY;
-    });
-    const end = () => (last = null);
-    c.addEventListener("pointerup", end);
-    c.addEventListener("pointercancel", end);
   }
 
   resize() {

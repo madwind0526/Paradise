@@ -39,7 +39,7 @@ Krea 2 draws the anime panorama (1792x768). Qwen Image Edit paints the whole sky
 
 `UNETLoader` (krea2_turbo_nvfp4) + `CLIPLoader` type `krea2` (qwen3vl_4b_fp8_scaled) + `VAELoader` (qwen_image_vae) + `ConditioningZeroOut` as the negative, `KSampler` 8 steps, cfg 1, euler/simple. Model names on Windows contain a single backslash: write `"Krea\\krea2_turbo_nvfp4.safetensors"` in a JS file, and never inside an unquoted shell heredoc (the shell eats the backslash).
 
-## Tilting the view without moving the world
+## (Removed feature) Tilting the view — the user asked for a fully fixed view
 
 Keep the camera position fixed and move only the `lookAt` height: `lookAtY = camY - 0.575 + 11.94 * tan(tilt)` (the resting view looks 2.8 degrees down; 11.94 m is the horizontal distance to the look-at point). The panorama is placed for the resting view, so tilting never moves the scenery relative to the figure. The sky pictures cover 55 degrees; mirror the picture row above that (`v = 1 - abs(1 - elevation/55deg)`) instead of clamping it (a clamp stretches the last row into streaks). Tilt up to only 0.1 rad (6 degrees): the figure stands near the bottom of the screen and leaves it when the view is tilted further up (the user asked for a small range). Drag events: down means look up; ignore `clientX`.
 
