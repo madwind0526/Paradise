@@ -475,7 +475,8 @@ export class World {
     if (url === this.figureUrl) return;
     this.figureUrl = url;
     this.figure.visible = false;
-    new THREE.TextureLoader().load(asset(url), (texture) => {
+    // `url` already carries the base path of the app (figures.ts applies `asset()`), so it is used as it is: applying it twice breaks a sub-path such as /Paradise/.
+    new THREE.TextureLoader().load(url, (texture) => {
       if (this.figureUrl !== url) return texture.dispose(); // another figure was picked meanwhile
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 8;
