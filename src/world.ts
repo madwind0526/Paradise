@@ -6,6 +6,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { asset } from "./config";
 import type { MapSpec } from "./types";
+import type { FigureLook } from "./figures";
 
 const GLSL_NOISE = /* glsl */ `
 // Sine-free hash: sin() of large arguments loses precision on GPUs (stars vanish, patterns break far from the origin).
@@ -23,7 +24,8 @@ const PHOTO_GLSL = /* glsl */ `
 vec3 skyPhoto(sampler2D tex, vec3 d, float aspect, float t) {
   float az = atan(d.x, -d.z) / 6.2831853 * 360.0 / (55.0 * max(aspect, 0.76)) + 0.5 + t * 0.0015; // +0.5: the picture centre, not a mirror seam, faces forward
   float u = abs(fract(az * 0.5) * 2.0 - 1.0);
-  float v = clamp(asin(clamp(d.y, 0.0, 1.0)) / 0.9599311, 0.0, 1.0);
+  // Above the top edge of the picture (55 degrees) the picture is mirrored, so looking far up shows more sky instead of a stretched last row.
+  float v = 1.0 - abs(1.0 - asin(clamp(d.y, 0.0, 1.0)) / 0.9599311);
   // Stay a little inside the picture: the outermost pixels are often a dark border or JPEG edge, which shows as a line at every mirror fold.
   return texture2D(tex, vec2(0.015 + 0.97 * u, 0.01 + 0.98 * v)).rgb;
 }
@@ -41,13 +43,13 @@ moonMap.colorSpace = THREE.SRGBColorSpace;
 const nightMat = new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending,
   uniforms: {
-    uMoon: { value: new THREE.Vector3() }, uMoonSize: { value: 0.15 }, uMoonTint: { value: new THREE.Vector3(0.9, 0.97, 1.1) }, uMoonGlow: { value: new THREE.Vector3(0.45, 0.62, 1.0) }, uStars: { value: 1 }, uNight: { value: 0 }, uTime: { value: 0 }, uCloud: { value: 0.5 }, uAurora: { value: 0 },
+    uMoon: { value: new THREE.Vector3() }, uMoonSize: { value: 0.095 }, uCamR: { value: new THREE.Vector3(1, 0, 0) }, uCamU: { value: new THREE.Vector3(0, 1, 0) }, uCamF: { value: new THREE.Vector3(0, 0, -1) }, uMoonTint: { value: new THREE.Vector3(0.9, 0.97, 1.1) }, uMoonGlow: { value: new THREE.Vector3(0.45, 0.62, 1.0) }, uStars: { value: 1 }, uNight: { value: 0 }, uTime: { value: 0 }, uCloud: { value: 0.5 }, uAurora: { value: 0 },
     uMap: { value: starMap }, uMoonMap: { value: moonMap }, uRot: { value: new THREE.Matrix3() },
     uPhoto: { value: null as THREE.Texture | null }, uPhotoOn: { value: 0 }, uPhotoAspect: { value: 1.5 },
   },
   vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
-    uniform vec3 uMoon, uMoonTint, uMoonGlow; uniform float uMoonSize, uStars, uNight, uTime, uCloud, uAurora; uniform sampler2D uMap, uMoonMap, uPhoto; uniform mat3 uRot; uniform float uPhotoOn, uPhotoAspect;
+    uniform vec3 uMoon, uMoonTint, uMoonGlow, uCamR, uCamU, uCamF; uniform float uMoonSize, uStars, uNight, uTime, uCloud, uAurora; uniform sampler2D uMap, uMoonMap, uPhoto; uniform mat3 uRot; uniform float uPhotoOn, uPhotoAspect;
     varying vec3 vDir;
     ${GLSL_NOISE}
     ${PHOTO_GLSL}
@@ -82,10 +84,11 @@ const nightMat = new THREE.ShaderMaterial({
     // The moon: an anime moon picture, a tint (silver or red) and a glow. Also used over a night picture.
     vec3 addMoon(vec3 col, vec3 d){
       float md = dot(d, uMoon);
-      vec3 mz = uMoon;
-      vec3 mx = normalize(cross(vec3(0.0, 1.0, 0.0), mz));
-      vec3 my = cross(mz, mx);
-      vec2 mp = vec2(dot(d, mx), dot(d, my)) / uMoonSize;
+      // The disc is round on the screen, not in angle: the camera is a rectilinear projection, which stretches things near the edges
+      // of the picture into ovals. So the moon is measured in the screen plane (camera right, up and forward).
+      float df = dot(d, uCamF), mf = dot(uMoon, uCamF);
+      vec2 mp = vec2(9.0);
+      if (df > 0.05 && mf > 0.05) mp = (vec2(dot(d, uCamR), dot(d, uCamU)) / df - vec2(dot(uMoon, uCamR), dot(uMoon, uCamU)) / mf) / uMoonSize;
       float mr = length(mp);
       if (md > 0.0 && mr < 1.0) {
         // The moon picture is an anime moon seen straight on: its disc fills the picture.
@@ -194,8 +197,10 @@ const hazeMat = new THREE.ShaderMaterial({
 const HORIZON = { day: new THREE.Color("#c9dcee"), dusk: new THREE.Color("#f0a479"), night: new THREE.Color("#141b3a") };
 const NIGHT_HAZE = new THREE.Color(0.55, 0.66, 1.1); // band color at night, before tone mapping
 const SKY_SCALE = 4000;
+const WALL_R = 150; // radius of the panorama wall, in meters
 const DECK_Y = -0.2; // height of the cloud deck; the figure stands in it
 const FIGURE_SIZE = 3.1 * 0.7; // meters (the picture is square)
+const FIGURE_DROP = 0.62; // meters the figure stands lower on the screen; the panorama is placed without it, so the scenery does not move
 // The endless sea of clouds the figure floats above. It fades into the horizon haze with distance.
 const deckMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false,
@@ -226,37 +231,19 @@ const deckMat = new THREE.ShaderMaterial({
 const photoMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, side: THREE.DoubleSide,
   uniforms: { uTex: { value: null as THREE.Texture | null }, uLight: { value: 1 }, uNight: { value: 0 }, uHaze: { value: new THREE.Color() }, uH: { value: 1 }, uE: { value: 0 } },
-  // The wall reaches uE meters below the picture; there the last row of the picture is stretched, so the scenery fills the bottom of the screen.
-  vertexShader: "uniform float uH, uE; varying vec2 vUv; void main(){ vUv = uv; vUv.y = clamp((uv.y * (uH + uE) - uE) / uH, 0.0, 1.0); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
   fragmentShader: /* glsl */ `
-    uniform sampler2D uTex; uniform float uLight, uNight; uniform vec3 uHaze; varying vec2 vUv;
+    uniform sampler2D uTex; uniform float uLight, uNight, uH, uE; uniform vec3 uHaze; varying vec2 vUv;
     void main(){
-      vec4 c = texture2D(uTex, vUv);
+      // The wall reaches uE meters below the picture; there the last row of the picture is stretched, so the scenery fills the bottom of the screen.
+      // (Computed per pixel: per vertex, the two ends of the wall would be interpolated and the whole picture stretched.)
+      float v = clamp((vUv.y * (uH + uE) - uE) / uH, 0.0, 1.0);
+      vec4 c = texture2D(uTex, vec2(vUv.x, v));
       float a = c.a * smoothstep(0.0, 0.1, min(vUv.x, 1.0 - vUv.x)); // the sky is already cut out of the picture (alpha)
       vec3 col = c.rgb * (0.62 + 0.7 * uLight);
       col = mix(col, uHaze * 0.5, 0.12 * (1.0 - uLight));            // a little sky color in the dark
-      col *= mix(1.0, 0.2, uNight);
+      col *= mix(vec3(1.0), vec3(0.6, 0.67, 0.9), uNight);              // at night the beach and the sea stay readable: a cool moonlit tint, not black
       gl_FragColor = vec4(col, a);
-      #include <tonemapping_fragment>
-      #include <colorspace_fragment>
-    }`,
-});
-
-// Far mountains behind the panorama: three strips (far, middle, near) of one kind (blue, snow, rock, forest, green) that
-// peek over the sea line. Farther strips are hazier. The pictures have their own alpha (the sky was keyed out).
-const MOUNTAIN_LAYERS = [{ name: "far", R: 520, mix: 0.62 }, { name: "mid", R: 430, mix: 0.52 }, { name: "near", R: 340, mix: 0.42 }];
-const MOUNTAIN_SPAN = 3.6; // radians of the circle each strip covers
-const mountainMat = (mix: number) => new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false, side: THREE.DoubleSide,
-  uniforms: { uTex: { value: null as THREE.Texture | null }, uLight: { value: 1 }, uNight: { value: 0 }, uHaze: { value: new THREE.Color() }, uMix: { value: mix } },
-  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-  fragmentShader: /* glsl */ `
-    uniform sampler2D uTex; uniform float uLight, uNight, uMix; uniform vec3 uHaze; varying vec2 vUv;
-    void main(){
-      vec4 c = texture2D(uTex, vUv);
-      vec3 col = mix(c.rgb, uHaze, uMix) * (0.5 + 0.7 * uLight);   // haze first, then the light of the hour
-      col *= mix(1.0, 0.2, uNight);
-      gl_FragColor = vec4(col, c.a * smoothstep(0.0, 0.05, vUv.y));
       #include <tonemapping_fragment>
       #include <colorspace_fragment>
     }`,
@@ -272,7 +259,7 @@ const figureMat = new THREE.ShaderMaterial({
     void main(){
       vec4 c = texture2D(uTex, vUv);
       vec3 col = c.rgb * uWarm * (0.5 + 0.6 * uLight);
-      col *= mix(vec3(1.0), vec3(0.62, 0.7, 0.9), uNight); // at night the figure stays readable, with a cool moonlit tint
+      col *= mix(vec3(1.0), vec3(0.82, 0.88, 1.0), uNight); // at night the figure stays clearly readable, with a cool moonlit tint
       gl_FragColor = vec4(col * 1.9, c.a); // pre-multiplied like the domes: the output pass tone-maps once
       #include <colorspace_fragment>
     }`,
@@ -282,8 +269,9 @@ export class World {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(55, 1, 0.3, 7000);
-  readonly yaw = 0; // the view is fixed: the map cannot be moved
+  readonly yaw = 0; // the view cannot be turned sideways
   readonly pitch = 0.14;
+  tilt = 0; // radians the view is tilted up (positive) or down (negative) by dragging up and down; the camera itself does not move
   night = 0;
   sunUp = true;
   moonOverride?: THREE.Vector3;
@@ -302,20 +290,10 @@ export class World {
   private hemi = new THREE.HemisphereLight(0xffffff, 0x8890a0, 0.2);
   private haze = new THREE.Color();
   private photo!: THREE.Mesh;
-  private ranges = MOUNTAIN_LAYERS.map((l) => {
-    const H = l.R * 0.27; // about 15 degrees of view: the land fills the bottom of the strip
-    const geo = new THREE.CylinderGeometry(l.R, l.R, H, 48, 1, true, Math.PI - MOUNTAIN_SPAN / 2, MOUNTAIN_SPAN);
-    const mesh = new THREE.Mesh(geo, mountainMat(l.mix));
-    mesh.scale.x = -1;
-    mesh.renderOrder = 1;
-    mesh.frustumCulled = false;
-    mesh.visible = false;
-    return { ...l, H, mesh };
-  });
-  private mountainKind = "";
   private figure = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), figureMat);
   private figureTexture?: THREE.Texture;
   private figureUrl = "";
+  private look: FigureLook = { floats: true };
   private figureLight = 1;
   private photoTexture?: THREE.Texture;
   private map?: MapSpec;
@@ -344,7 +322,7 @@ export class World {
     this.deck.frustumCulled = false;
 
     // The photo wall: 160 degrees of a cylinder around the figure, in front of the first view.
-    const R = 150, SPAN = 2.8, H = (R * SPAN) / (1792 / 768), E = 80;
+    const R = WALL_R, SPAN = 2.8, H = (R * SPAN) / (1792 / 768), E = 80;
     photoMat.uniforms.uH.value = H; photoMat.uniforms.uE.value = E;
     const wall = new THREE.CylinderGeometry(R, R, H + E, 48, 1, true, Math.PI - SPAN / 2, SPAN); // theta 0 faces +z, so this arc faces the camera at -z
     this.photo = new THREE.Mesh(wall, photoMat);
@@ -357,7 +335,7 @@ export class World {
     this.figure.renderOrder = 3;
     this.figure.frustumCulled = false;
     this.figure.visible = false;
-    this.scene.add(this.sky, this.dayDome, this.stars, this.hazeDome, this.deck, ...this.ranges.map((r) => r.mesh), this.photo, this.figure, this.sunLight, this.hemi);
+    this.scene.add(this.sky, this.dayDome, this.stars, this.hazeDome, this.deck, this.photo, this.figure, this.sunLight, this.hemi);
     this.makeEnvironment();
 
     this.composer = new EffectComposer(this.renderer);
@@ -368,6 +346,7 @@ export class World {
     this.composer.addPass(new OutputPass());
     this.resize();
     addEventListener("resize", () => this.resize());
+    this.bindTilt();
   }
 
   private makeEnvironment() {
@@ -384,6 +363,21 @@ export class World {
     pm.dispose();
   }
 
+  /** Dragging up and down tilts the view (more sky, or more ground); sideways movement is ignored. */
+  private bindTilt() {
+    let last: number | null = null;
+    const c = this.canvas;
+    c.addEventListener("pointerdown", (e) => { last = e.clientY; try { c.setPointerCapture(e.pointerId); } catch { /* a synthetic event has no active pointer */ } });
+    c.addEventListener("pointermove", (e) => {
+      if (last === null) return;
+      this.tilt = Math.min(0.8, Math.max(-0.12, this.tilt + (e.clientY - last) * 0.004)); // drag down: look up, like pulling the sky down
+      last = e.clientY;
+    });
+    const end = () => (last = null);
+    c.addEventListener("pointerup", end);
+    c.addEventListener("pointercancel", end);
+  }
+
   resize() {
     const w = this.canvas.clientWidth || innerWidth, h = this.canvas.clientHeight || innerHeight;
     this.renderer.setSize(w, h, false);
@@ -396,7 +390,6 @@ export class World {
   setMap(m: MapSpec) {
     this.map = m;
     this.setResortPhoto(m.scenery.photo);
-    this.setMountains(m.scenery.mountains);
     deckMat.uniforms.uTint.value.set(m.scenery.cloud);
     if (m.sky.picture) { this.mapPicture = true; this.setSkyPhoto("day", m.sky.picture); }
     else if (this.mapPicture) { this.mapPicture = false; this.setSkyPhoto("day", null); } // leaving a map with its own sky picture
@@ -410,27 +403,6 @@ export class World {
     u.mieDirectionalG.value = 0.68;
     u.rayleigh.value = 0.5 + m.sky.blue * 3.5;
     this.windLevel = m.ambience.wind;
-  }
-
-  /** Show the mountain strips of one kind behind the panorama ("" = none). */
-  private setMountains(kind: string) {
-    if (kind === this.mountainKind) return;
-    this.mountainKind = kind;
-    for (const r of this.ranges) {
-      const u = (r.mesh.material as THREE.ShaderMaterial).uniforms;
-      r.mesh.visible = false;
-      if (!kind) continue;
-      new THREE.TextureLoader().load(asset(`/mountains/${kind}-${r.name}.webp`), (tex) => {
-        if (this.mountainKind !== kind) return tex.dispose(); // another map was picked meanwhile
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 4;
-        tex.wrapS = THREE.MirroredRepeatWrapping; // mirrored copies side by side, so there is no seam
-        tex.repeat.x = (MOUNTAIN_SPAN * r.R) / (r.H * (1536 / 640));
-        (u.uTex.value as THREE.Texture | null)?.dispose();
-        u.uTex.value = tex;
-        r.mesh.visible = true;
-      });
-    }
   }
 
   private setResortPhoto(path: string) {
@@ -484,6 +456,8 @@ export class World {
   /** A small square JPEG of the current map at noon, for its card. The frame is drawn and read in the same task,
    *  so no preserved drawing buffer is needed; the normal loop redraws the real hour right after. */
   snapshot(size = 200): string {
+    const savedTilt = this.tilt;
+    this.tilt = 0;
     this.update(0, 11);
     const src = this.renderer.domElement;
     const side = Math.min(src.width, src.height * 0.8);
@@ -491,11 +465,13 @@ export class World {
     out.width = out.height = size;
     const sy = Math.max(0, Math.min(src.height - side, src.height * 0.55 - side * 0.5));
     out.getContext("2d")!.drawImage(src, (src.width - side) / 2, sy, side, side, 0, 0, size, size);
+    this.tilt = savedTilt;
     return out.toDataURL("image/jpeg", 0.82);
   }
 
   /** Show a figure: a picture with a transparent background, shown standing in front of the scenery. */
-  setFigure(url: string) {
+  setFigure(url: string, look: FigureLook = { floats: true }) {
+    this.look = look;
     if (url === this.figureUrl) return;
     this.figureUrl = url;
     this.figure.visible = false;
@@ -516,29 +492,52 @@ export class World {
 
     this.updateSky(hour);
 
-    // The figure drifts up and down a little and always faces the camera.
-    const size = FIGURE_SIZE;
-    this.figure.scale.set(size, size, 1);
-    this.figure.position.set(0, DECK_Y + size * 0.5 - 0.12 + Math.sin(this.t * 0.8) * 0.03, 0);
-    this.figure.rotation.set(0, this.yaw, Math.sin(this.t * 0.55) * 0.012);
-
+    // Place the figure: the person of every picture sits where the person of the sun lounger sits (same head position and size), but the
+    // drawing never goes below the sand line of the lounger. Everything except the lounger floats: it bobs and sways.
+    const S = FIGURE_SIZE, REF = { x: 0.55, y: 0.23, d: 0.30, bottom: 0.92 };
+    const baseY = DECK_Y - 0.12 - FIGURE_DROP;             // bottom of the lounger picture
+    const refCy = baseY + S * 0.5;                          // its centre
+    const groundY = refCy + S * (0.5 - REF.bottom);         // the lowest drawn row of the lounger, in meters
+    const hd = this.look.head, bf = this.look.bottom ?? 0.95;
+    const k = hd ? Math.min(1.5, Math.max(0.8, REF.d / hd[2])) : 1, S2 = S * k;
+    let cx = 0, cy = groundY - S2 * (0.5 - bf);
+    if (hd) {
+      cx = (REF.x - 0.5) * S - (hd[0] - 0.5) * S2;
+      cy = refCy + S * (0.5 - REF.y) - S2 * (0.5 - hd[1]);
+      const low = cy + S2 * (0.5 - bf);
+      if (low < groundY) cy += groundY - low;
+    }
+    const f = this.look.floats;
+    const bob = f ? 0.1 + 0.09 * Math.sin(this.t * 1.1) + 0.04 * Math.sin(this.t * 0.5 + 1) : 0; // hovers 10 cm above the sand line and sways around that
+    this.figure.scale.set(S2, S2, 1);
+    this.figure.position.set(cx + (f ? 0.03 * Math.sin(this.t * 0.7) : 0), cy + bob, 0);
+    this.figure.rotation.set(0, this.yaw, f ? 0.025 * Math.sin(this.t * 0.8) : 0);
 
     const target = new THREE.Vector3(0, 0.9, 0);
     const d = this.dist, p = this.pitch;
     const bx = Math.sin(this.yaw), bz = Math.cos(this.yaw);
     this.camera.position.set(target.x + bx * Math.cos(p) * d, target.y + 0.4 + Math.sin(p) * d, target.z + bz * Math.cos(p) * d);
     // Face the same way for every pitch: the front of the view is -z, so the wall sits straight ahead at yaw 0.
-    this.camera.lookAt(target.x, target.y + 0.55 + p * 0.8, target.z - 6);
+    // The resting view looks 2.8 degrees down; dragging up and down tilts it (the panorama and the figure stay put in the world).
+    this.camera.lookAt(target.x, this.camera.position.y - 0.575 + 11.94 * Math.tan(this.tilt), target.z - 6);
+    // The camera's right, up and forward vectors, for the moon (see addMoon in the night shader).
+    this.camera.updateMatrixWorld();
+    const fw = this.camera.getWorldDirection(new THREE.Vector3()), rt = new THREE.Vector3().crossVectors(fw, new THREE.Vector3(0, 1, 0)).normalize();
+    nightMat.uniforms.uCamF.value.copy(fw);
+    nightMat.uniforms.uCamR.value.copy(rt);
+    nightMat.uniforms.uCamU.value.crossVectors(rt, fw);
     this.sky.position.copy(this.camera.position);
     this.stars.position.copy(this.camera.position);
     this.dayDome.position.copy(this.camera.position);
     this.hazeDome.position.copy(this.camera.position);
     this.deck.position.x = this.camera.position.x;
     this.deck.position.z = this.camera.position.z;
-    const horizonY = this.camera.position.y; // the picture's horizon sits at the eye height of the first view
-    for (const r of this.ranges) r.mesh.position.set(0, horizonY - 3 + r.H / 2, 0); // the strips stand on the sea line
-    const h = this.photo.userData.height as number;
-    this.photo.position.set(0, horizonY - 0.5 * h + h * (this.map?.scenery.horizon ?? 0.45) - photoMat.uniforms.uE.value / 2, 0);
+    // The picture is placed so that its row "stand" (where the sand is) lies at the feet of the figure: the figure never stands in the sea.
+    const camY = this.camera.position.y;
+    const feetY = DECK_Y - 0.12; // bottom of the figure picture before it is lowered: the panorama is placed for this height
+    const rowY = camY - WALL_R * Math.tan(Math.atan((camY - feetY) / this.dist)); // height on the wall that appears at the feet
+    const h = this.photo.userData.height as number, E = photoMat.uniforms.uE.value as number;
+    this.photo.position.set(0, rowY - 0.5 * h + h * (this.map?.scenery.stand ?? 0.85) - E / 2, 0);
 
     figureMat.uniforms.uLight.value = this.figureLight;
     figureMat.uniforms.uNight.value = this.night;
@@ -592,10 +591,6 @@ export class World {
     deckMat.uniforms.uSun.value.copy(sun);
     this.figureLight = light;
     figureMat.uniforms.uWarm.value.set("#ffffff").lerp(new THREE.Color("#ffb88a"), (1 - day) * (e > 0 ? 1 : 0) * 0.5); // warm at dusk
-    for (const r of this.ranges) {
-      const u = (r.mesh.material as THREE.ShaderMaterial).uniforms;
-      u.uLight.value = light; u.uNight.value = this.night; u.uHaze.value.copy(hor);
-    }
     photoMat.uniforms.uLight.value = light;
     photoMat.uniforms.uNight.value = this.night;
     photoMat.uniforms.uHaze.value.copy(hor);

@@ -12,8 +12,7 @@
   },
   "scenery": {
     "photo": "/resorts/bali.webp",
-    "mountains": "",
-    "horizon": 0.52,
+    "stand": 0.8,
     "cloud": "#f6f9ff"
   },
   "ambience": {

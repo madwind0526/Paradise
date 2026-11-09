@@ -1,26 +1,120 @@
 # Trouble Shooting
 
-> 발생했던 버그와 해결 방법. 같은 문제를 두 번 겪지 않기 위한 기록.
+> 발생했던 버그와 해결 방법. 같은 문제를 두 번 겪지 않기 위한 기록. (걷기, 3D 캐릭터, 눈/소금사막 지면 시절의 항목은 기능이 사라져 삭제함.)
 
-## 내장 리조트 선택이 저장되지 않음
+## 그림이 벽에서 세로로 늘어나고 아래로 밀림 (파노라마)
 
 ### 증상
 
-리조트 카드를 눌러도 사진이 바뀌지 않거나 모든 카드가 선택된 것처럼 보이고, 설정에 `mapId`가 저장되지 않는다.
+풍경 그림이 의도보다 크고, 지정한 `stand` 줄이 발밑에 오지 않으며, 수평선이 예상보다 훨씬 낮다.
 
 ### 원인
 
-내장 지도 JSON에 ID가 없는데 앱은 ID를 선택 키와 저장 값으로 사용했다.
+그림 아래를 늘리려고 정점 셰이더에서 `vUv.y = clamp((uv.y*(H+E)-E)/H, 0, 1)`를 계산했다. 원통 벽은 위/아래 두 끝점뿐이라 값이 그 사이에서 선형 보간되어, 그림 전체가 `H+E` 높이로 늘어났다(약 1.44배).
 
 ### 해결
 
-지도 파일을 읽을 때 파일명(`maldives`, `santorini`, `amalfi`)을 ID로 붙인다. 파일에 ID가 포함되지 않는 데이터 형식을 쓰는 모든 내장 항목에 같은 규칙을 적용한다.
+정점 셰이더는 `uv`만 넘기고, 프래그먼트 셰이더에서 `clamp((vUv.y*(uH+uE)-uE)/uH, 0, 1)`로 화면 점마다 계산한다. 비선형 값(clamp, 곡선)을 정점에서 계산해 넘기면 보간으로 망가진다는 일반 규칙이다.
+
+## 달이 화면 가장자리에서 타원으로 찌그러짐
+
+### 증상
+
+달이 오른쪽이나 위쪽으로 가면 납작한 타원이 된다.
+
+### 원인
+
+방향 공간의 원(각도 반경)을 광각 원근 투영으로 보면 가장자리에서 늘어난다.
+
+### 해결
+
+화면 평면에서 잰다. 카메라 right/up/forward(`uCamR/U/F`)로 `p(d) = (d·R, d·U) / (d·F)`를 구하고 달 방향의 `p`와 비교한다. 매 프레임 카메라에서 uniform을 갱신한다.
+
+## 달이 뿌옇게 번져 무늬가 안 보임
+
+### 증상
+
+달이 하얀 원판처럼 보이고 달 표면 무늬가 사라진다.
+
+### 원인
+
+(1) 원판 밝기가 블룸 임계값을 넘는다(도메인 셰이더가 마지막에 x1.9를 곱함). (2) 원판 안쪽 전체에 푸른 후광이 더해진다.
+
+### 해결
+
+달 색에 0.5 정도를 곱해 임계값 아래로 두고, 후광 항을 가장자리 바깥에서만 시작하게 한다(`smoothstep(0.985, 1.03, mr)`), 중심 후광은 거의 0으로 줄인다.
+
+## 풍경 하늘 오려내기에서 마젠타 얼룩
+
+### 증상
+
+야자잎 사이나 가장자리에 분홍/보라 조각이 남거나, 반대로 산이나 야자 일부가 구멍/조각난 패치가 된다.
+
+### 원인
+
+Qwen Edit이 하늘뿐 아니라 풍경 일부(산꼭대기 구름, 먼 안개)도 마젠타로 칠한다. 또 "하늘에서 가까운 조각만 하늘" 같은 규칙을 모든 그림에 켜면 몰디브처럼 잎에 가려진 하늘 조각이 하늘로 인정되지 않는다.
+
+### 해결
+
+기본은 큰 마젠타 조각을 모두 하늘로 본다. 풍경에 칠해진 그림만 그림별 스위치(`REPAIR`, `STRICT`)로 처리한다. 남은 마젠타 픽셀 수를 그림마다 확인한다. 큰 영역을 "가장 가까운 깨끗한 픽셀"로 채우면 조각난 보로노이 무늬가 생기니 작은 얼룩에만 쓴다.
+
+## 캐릭터 그림에 그림자가 남거나 구름 아래가 들쭉날쭉
+
+### 증상
+
+그림자를 키잉으로 지우면 구름 밑면, 밧줄, 머리카락이 깎인다.
+
+### 원인
+
+Turbo 모델은 cfg 1이라 네거티브 프롬프트가 없고 그림자를 그린다. 임계값 키잉은 어두운 그림자, 구름 음영, 가는 선에서 깨진다.
+
+### 해결
+
+Qwen Image Edit로 그림자만 지우고 배경을 평평한 초록으로 만든 뒤 BiRefNet 매팅으로 알파를 얻는다.
+
+## BiRefNetRMBG 노드가 `'invert_output'` 오류
+
+### 원인
+
+ComfyUI API 형식으로 호출할 때 선택(optional) 입력도 모두 넘겨야 한다.
+
+### 해결
+
+`sensitivity, mask_blur, mask_offset, invert_output, refine_foreground, unload_model, background, background_color`를 모두 지정한다.
+
+## ComfyUI 모델 이름 "not in list"
+
+### 원인
+
+Windows 경로의 백슬래시가 셸 heredoc에서 사라지거나 `/`로 바뀌었다. 목록의 이름은 `Z-image\z_image_turbo_bf16.safetensors`처럼 백슬래시 하나다.
+
+### 해결
+
+JS 파일에는 `"Z-image\\z_image..."`로 쓰고, 셸 heredoc 안에서는 따옴표 처리 없이 쓰지 않는다. 파일 편집 도구를 쓰거나 `String.fromCharCode(92)`로 조립한다.
+
+## `pkill`이 없음 / 프로세스를 종료할 수 없음
+
+Git Bash에는 `pkill`이 없다. 이 PC에서는 PowerShell `Get-CimInstance Win32_Process | Where CommandLine -like ...`로 찾아 `Stop-Process`한다. 서버를 계속 띄워 두면 포트 4317이 남으니 끝나면 `stop.bat`을 쓴다.
+
+## 내장 맵 선택이 저장되지 않음
+
+### 증상
+
+맵 카드를 눌러도 사진이 바뀌지 않거나 모든 카드가 선택된 것처럼 보이고, 설정에 `mapId`가 저장되지 않는다.
+
+### 원인
+
+내장 맵 JSON에 ID가 없는데 앱은 ID를 선택 키와 저장 값으로 사용했다.
+
+### 해결
+
+맵 파일을 읽을 때 파일명(`maldives`, `hawaii`, `bali`, ...)을 ID로 붙인다(`BUILTIN_MAPS`). 파일에 ID가 포함되지 않는 모든 내장 항목에 같은 규칙을 적용한다.
 
 ## GLSL 난수 무늬가 먼 거리에서 사라짐
 
 ### 증상
 
-별이나 지면 무늬가 큰 좌표에서 GPU마다 달라지거나 사라진다.
+별이나 무늬가 큰 좌표에서 GPU마다 달라지거나 사라진다.
 
 ### 원인
 
@@ -76,7 +170,7 @@ YouTube 플레이리스트 모드에서 `Invalid video id` 예외가 발생한�
 
 ### 증상
 
-`.empty {`를 치환했는데 `.stam.empty {` 규칙까지 먼저 바뀌었다.
+`.empty {`를 치환했는데 `.stam.empty {` 같은 더 긴 선택자의 규칙까지 먼저 바뀌었다.
 
 ### 원인
 
@@ -99,20 +193,6 @@ CORS 헤더가 없는 원격 음악이 EQ 경로에 연결되면 재생은 되�
 ### 해결
 
 동일 출처/Blob 오디오는 EQ 요소로 보내고, 외부 원격 오디오는 직접 재생 요소로 보낸다.
-
-## 야간 눈 지면과 산의 눈이 너무 어두움
-
-### 증상
-
-밤 장면에서 눈 지면과 눈 덮인 산이 거의 검푸르게 보인다.
-
-### 원인
-
-눈 셰이더의 밝기가 태양 기반 `uLight`에만 의존해 밤에는 바닥광이 부족하다.
-
-### 해결
-
-지면 눈 셰이더에 `uNight` 기반의 달빛 바닥광을 더하고, 산의 눈 색에도 야간 최소 밝기를 둔다. 눈의 푸른 음영은 유지한다.
 
 ## 화면 로딩 중 시작 버튼을 누르면 오디오 예외
 
@@ -142,56 +222,6 @@ YouTube API나 재생 목록 설정이 끝나기 전에 `setMusic(true)`가 빈 
 
 맵 전용 그리드 규칙을 정사각 카드 규칙 뒤에 선언하고 세 열을 명시한다. 좁은 화면에서도 카드 폭을 열 너비에 맞추고 간격을 줄인다.
 
-## Missing bundled default after user assets are moved
-The body catalogue can still contain a static ID after its file has been moved out of `public/models/people`. Validate a saved body file against the live `/api/people` result, then select the first available custom character or `rpm-f` when the saved file is missing.
+## 접속 모니터링(Cloudflare)이 Voyager와 같은 사이트로 집계됨
 
-## Mixamo walk moves forward and snaps at loop
-A Mixamo Standard Walk clip contains a Hips.position Z track that advances about 166 cm during its 1.17-second cycle. If the app also advances the avatar in the world, this doubles motion and causes a backward snap at each loop. Keep the Hips vertical animation, but hold horizontal X/Z at the first key so world movement controls travel.
-
-## Character list includes an unrelated fallback
-
-When `public/models/people/` contains custom character files, keeping the static `rpm-f` Ready Player Me entry adds an unrelated extra tile. Filter `rpm-f` from `BODIES` whenever the custom file list is non-empty. Keep it available when no custom files exist.
-
-## Imported character catalog and audio control panels
-
-The built-in `rpm-f` fallback appeared beside imported characters because the app appended custom files to the static built-in `BODIES` array. Keep the built-in catalog separate and choose the imported list when it is non-empty; use available built-ins as the fallback only when no imported files exist. The playback row and volume control also shared translucent panel styling; remove panel backgrounds while preserving their child buttons and slider.
-
-## Profile and settings differ between app URLs
-
-`localStorage` is scoped to a browser origin, including its host and port. Opening the same app from the Vite port and the production server therefore produced separate profiles. Mirror settings through the local API to an ignored `data/settings.json` file, restore that copy at startup, and keep localStorage as a fallback when the API is unavailable. Locally selected file object URLs remain session-only because the browser does not retain those file grants.
-
-## Walk clips are fixed and leak into the character list
-
-The avatar loaded only a hard-coded Standard Walk clip. Additional `Walking*.fbx` clips in the people folder could also appear as profile characters because the API excluded only two exact filenames. Enumerate walk files separately, exclude them from the people list, add the chosen filename to saved profile settings, and update current and future avatars when it changes. Root position tracks still need to be skipped to keep walking in place. Some clips exported with Skin include large geometry; use Without Skin when re-downloading.
-
-## Dance FBX files are mistaken for character models
-
-When walk-only filename matching is used, dance FBXs such as `Gangnam Style` and `Hip Hop Dancing` can appear in the character picker. Classify walk and dance files into separate animation groups, migrate the persisted selection to a generic `animation` field, and exclude both kinds from the people list. For names without a `Dance`/`Dancing` marker, add an explicit filename rule or use a dedicated animation folder.
-
-## 2026-11-05 — Seated pose floating above ground
-
-- Cause: procedural sit pose used insufficient thigh flexion and placed the pelvis too high, leaving the hip surface visibly unsupported.
-- Fix: increase thigh flexion and lower the pelvis target. Keep feet and body geometry close to ground; tune against the deformed skinned mesh in browser.
-- Verified selected Ch06 in mobile browser: hip-weighted surface minimum 0.02 m and overall model minimum 0.004 m above ground; `npm run build` passed.
-
-## 2026-11-05 — Main scene did not fill wide windows
-
-- Cause: `#app` had `max-width: 420px`; desktop viewports wider than that left unused space around the app.
-- Fix: let `#app` use the full viewport width. `World.resize()` already resizes the renderer and camera on window resize.
-- Verified app/canvas bounds at 390×844 and 1280×900, settings open/close, sit toggle, and production build.
-
-## 2026-11-05 — Seated pose final ground measurement
-
-- Final pelvis target puts the hip-weighted surface about 0.009 m above the ground; overall model minimum is about -0.006 m on Ch06. This is a minor ground intersection while bringing the buttocks to the surface.
-
-## 2026-11-05 — Sit transition raised legs before lowering the body
-
-- Cause: while the walk animation mixer was active, `Person.pose()` returned early after setting only the walking bob. The seated pelvis height was applied only after the mixer path ended, producing the apparent levitation and sudden drop.
-- Fix: calculate model height through a shared method in both mixer and procedural branches. Advance body descent faster than knee flexion during the transition.
-- Verified walk-to-sit trajectory on Ch06 in browser: body root reached seated height before the full knee bend; final hip surface was about 0.009 m above ground. `npm run build` passed.
-
-## 2026-11-05 — App width did not fill the browser window
-
-- Cause: the app width was constrained by its parent/container sizing and the root used percentage width.
-- Fix: pin `#app` to the viewport with `position: fixed; inset: 0; width: 100vw; height: 100dvh;`. The existing resize listener updates renderer size and camera aspect.
-- Verified app and canvas fill at 390×844, 500×969, and 1280×900. Settings open/close and Walk/Sit toggle still work.
+`index.html`의 Cloudflare Web Analytics 블록은 Voyager에서 그대로 복사되었고 토큰도 같다. `github.io`에서 열릴 때만 켜지므로 로컬, 앱, 데스크톱에는 영향이 없다. Paradise를 따로 보려면 Cloudflare에서 새 사이트를 만들고 토큰을 바꾼다.

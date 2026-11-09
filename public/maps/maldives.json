@@ -12,8 +12,7 @@
   },
   "scenery": {
     "photo": "/resorts/maldives.webp",
-    "mountains": "",
-    "horizon": 0.45,
+    "stand": 0.83,
     "cloud": "#f6f9ff"
   },
   "ambience": {

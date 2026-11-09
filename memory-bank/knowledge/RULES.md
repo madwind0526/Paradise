@@ -1,6 +1,6 @@
 # Rules
 
-> 이 프로젝트의 규칙과 컨벤션. 모든 sub-agent가 반드시 따라야 함.
+> 이 프로젝트의 규칙과 컨벤션. 모든 sub-agent가 반드시 따라야 함. 사용자 요청에서 나온 규칙에는 이유(Why)를 적어 둔다.
 
 ## G-01: 코드 주석은 영어만 사용 (MANDATORY)
 
@@ -10,9 +10,9 @@
 
 ## 인라인 스크립트의 백슬래시 보존
 
-**규칙:** PowerShell에서 Python/bash 인라인 문자열을 만들 때 `\r?\n` 같은 백슬래시를 제어 문자로 바꾸지 않는다. `chr(92)`로 조립하거나 파일 편집 도구를 사용한다.
-**이유:** 의도한 정규식이나 텍스트가 줄바꿈 등으로 손상될 수 있다.
-**적용 시점:** 셸에서 인라인 Python/bash 스크립트로 파일을 바꿀 때.
+**규칙:** 셸에서 Python/JS 인라인 문자열을 만들 때 `\r?\n`, `Z-image\z_image...` 같은 백슬래시를 제어 문자로 바꾸지 않는다. 파일 편집 도구를 쓰거나 `chr(92)`/`\\\\`로 조립한다. `"...\n..."`를 파이썬 문자열에서 쓰면 진짜 줄바꿈이 된다.
+**이유:** 의도한 정규식, 모델 경로, 텍스트가 줄바꿈 등으로 손상된다.
+**적용 시점:** 셸에서 인라인 스크립트로 파일을 바꾸거나 ComfyUI 모델 경로를 쓸 때.
 
 ## 합성 오실레이터 효과음 금지
 
@@ -20,37 +20,38 @@
 **이유:** 사용자가 전자음 효과를 원하지 않으며, 녹음 음원이 자연스럽다.
 **적용 시점:** 앰비언스나 효과음을 추가할 때.
 
-<!-- 예시 형식:
+## 한 가지 애니 화풍, AI 도구로 오려내기
 
-## [규칙 이름]
+**규칙:** 풍경, 캐릭터, 하늘, 달은 모두 애니 일러스트다(실사, 3D 장난감 캐릭터 금지). Krea 2 + Qwen Image Edit + BiRefNet으로 로컬 ComfyUI에서 만들고, 손으로 짠 임계값 키잉보다 AI 도구를 우선한다. 제3자 사진/모델을 넣지 않는다. 휴양지는 "가고 싶은" 느낌이어야 한다(야자수, 꽃, 반짝이는 물).
+**이유:** 사진 같은 배경과 캐릭터가 따로 놀았고, 실사 휴양지가 가고 싶지 않았으며, 사용자가 Qwen Edit 같은 AI 컷아웃을 명시적으로 요청했다.
+**적용 시점:** 새 그림(맵, 캐릭터, 하늘, 달)을 만들 때. 레시피는 `docs/ASSETS.md`.
 
-**규칙:** [한 줄 요약]
-**이유:** [왜 이 규칙이 필요한가]
-**적용 시점:** [언제 이 규칙이 발동되나]
+## 캐릭터는 투명 그림, 그림자를 굽지 않는다
 
--->
+**규칙:** 사람은 `public/figures`의 투명 그림이다(3D 모델, 걷기 금지). 그림자를 그림에 굽지 않는다. 새 캐릭터는 `src/figures.ts`의 `LOOK`에 머리 위치/크기와 `bottom`을 등록한다.
+**이유:** 여러 종류(양탄자, 드론, 구름 등)를 원했고, 떠 있는 그림은 그림자가 닿을 땅이 없다. 앱이 시간대에 맞춰 색을 입힌다.
 
-## No cloud floor under the figure, no mountains over open sea
+## 캐릭터 배치: 선베드 사람 위치, 선베드만 땅, 나머지는 흔들림
 
-**Rule:** with a panorama the figure sits directly on the scenery (no cloud bank, no white fade at the bottom); mountain strips are not used over open sea.
-**Why:** the user said the cloud under the figure and mountains over the sea looked wrong.
+**규칙:** 모든 캐릭터는 선베드 사람의 머리 위치와 크기에 맞춘다(0.8~1.5배, 선베드 모래선 아래로 내려가지 않게). 선베드를 뺀 캐릭터는 모래선 위 10cm에서 위아래로 흔들리고 살짝 기운다. 캐릭터는 `FIGURE_DROP`만큼 화면 아래쪽에 서고, 재생 버튼과 겹치지 않는다.
+**이유:** 사용자가 "공중에 뜬 캐릭터는 흔들흔들", "다른 캐릭도 선베드 위치로", "캐릭을 더 내려줘"라고 요청했다.
 
-## No 3D characters, no baked shadows
+## 배경: 자연 중심, 바다 안에 서지 않기, 화면 고정
 
-**Rule:** the person is a transparent picture in `public/figures`; do not bring back 3D models or walking. Figures and panoramas are made locally (ComfyUI) and contain no baked shadows.
-**Why:** the user wants many picture variants (carpet, drone, cloud ...), and a floating picture has no ground to cast a shadow on; the app tints it by the time of day.
+**규칙:** 풍경은 자연 위주(건물은 작고 멀리), 야자수와 열대 식물이 둘러싼다. 풍경 하늘은 오려내고(알파), 화면은 바닥까지 풍경으로 채운다(구름 바닥, 흰 안개 띠 없음). 맵마다 `scenery.stand`를 모래 위에 둔다. 카메라는 위치 고정, 좌우 이동 불가, 상하로만 기울이기(`tilt`, 위로 최대 약 46도: 하늘을 더 보기). 바다 위에 산 레이어를 겹치지 않는다(산 기능은 제거됨).
+**이유:** 사용자가 건물 대신 자연을, 아래 구름 제거를, 바다 위 산이 어색함을, "맵이동은 안되게" 그리고 "좌우는 불가, 상하는 가능, 하늘을 더 보고 싶을 수도"를, 선베드가 바다 안에 있음을 지적했다.
 
-## The view is fixed, panoramas are tree-rich
+## 달: 둥근 보름달, 또렷하게, 화면 안을 지나감
 
-**Rule:** no dragging or moving the view (the camera is fixed); beach panoramas show many palm trees and lush foliage around the scene.
-**Why:** the user asked for "more trees around" and "no map movement".
+**규칙:** `public/sky/moon.jpg`는 애니 보름달 원판이다. 화면 평면에서 원으로 그린다(화면 높이의 약 18%). 18시 오른쪽에서 떠서 자정에 약 15도, 6시 왼쪽으로 진다. 원판은 블룸 기준보다 어둡게, 후광은 가장자리 바깥에만 약하게.
+**이유:** 사용자가 "달을 크게, 시간에 따라 이동", "너무 크고 찌그러짐 → 둥근 보름달", "뿌옇지 않고 선명하게"를 요청했다.
 
-## Anime style, one look for scenery and figure
+## 맵 제작 안내서는 코드와 같이 간다
 
-**Rule:** panoramas and figures are anime illustrations made with Krea 2 and Qwen Image Edit (no photo-real, no 3D toy figures); the resort must make people want to go (palm trees, flowers, sparkling water).
-**Why:** the user said the picture and the figure looked separated, the photo-real resort did not make them want to visit, and asked for anime. They also want Qwen Image Edit (and AI matting) for the cuts, not hand-made heuristics.
+**규칙:** `map 제작.md`의 JSON 예제와 풍경 그림 표(`scenery.stand`)는 `npm test`가 검증한다. 맵 필드, 풍경 그림, 내장 맵을 바꾸면 이 문서와 `docs/spec.md`를 같이 고친다.
+**이유:** 사용자가 맵 제작 MD를 현재 구조에 맞게 고치라고 했고, 옛 안내서는 코드와 어긋나 있었다.
 
-## The moon is an anime picture, large, crisp, and moves across the view
+## 밤에도 밝게
 
-**Rule:** public/sky/moon.jpg is an anime moon disc; the moon crosses the visible sky each night and stays below the bloom threshold, with a faint glow only outside the rim. At night the figure stays readable (cool moonlit tint, not dark).
-**Why:** the user asked for a bigger anime moon that moves with the time, that is crisp (not hazy), and for a brighter figure at night.
+**규칙:** 밤에 풍경(해변, 바다)과 캐릭터는 시안 톤(풍경 약 0.6, 캐릭터 약 0.8)으로 읽히게 한다. 검게 만들지 않는다.
+**이유:** 사용자가 "밤에 해변, 바다, 사람이 너무 어둡지 않게"를 요청했다.

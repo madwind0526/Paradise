@@ -48,7 +48,7 @@ async function loadBuiltins() {
 
 function apply() {
   const m = allMaps().find((x) => x.id === s.mapId) ?? bMaps[0];
-  world.setFigure((FIGURES.find((f) => f.id === s.figure) ?? FIGURES[0]).file);
+  { const fig = FIGURES.find((f) => f.id === s.figure) ?? FIGURES[0]; world.setFigure(fig.file, fig); }
   world.setMap(m);
   sound.setAmbience(m.ambience);
   applyVolumes();

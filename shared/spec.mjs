@@ -2,7 +2,6 @@
 // It returns { ok: true, value } with a normalized copy, or { ok: false, error }.
 
 export const MAP_SCHEMA = "paradise.map/1";
-export const MOUNTAINS = ["blue", "snow", "rock", "forest", "green"]; // strips in public/mountains: far, middle and near for each kind
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
@@ -19,7 +18,6 @@ export function validateMap(input) {
   const s = input.sky ?? {};
   const a = input.ambience ?? {};
   const sc = input.scenery ?? {};
-  if (sc.mountains !== undefined && sc.mountains !== "" && !MOUNTAINS.includes(sc.mountains)) return fail("scenery.mountains is invalid");
   if (sc.cloud !== undefined && !HEX.test(sc.cloud)) return fail("scenery.cloud must be #rrggbb");
   if (sc.photo !== undefined && sc.photo !== "" && !/^\/resorts\/[a-z0-9_-]{1,40}\.(jpe?g|png|webp)$/i.test(sc.photo)) return fail("scenery.photo is invalid");
   if (s.picture !== undefined && s.picture !== "" && !/^\/sky\/[a-z0-9_\-/]{1,60}\.(jpe?g|png|webp)$/i.test(s.picture)) return fail("sky.picture is invalid");
@@ -31,7 +29,7 @@ export function validateMap(input) {
       name,
       author: text(input.author, 30),
       sky: { clouds: unit(s.clouds, 0.5), stars: unit(s.stars, 1), haze: unit(s.haze, 0.2), blue: unit(s.blue, 0.5), nightPhotos: s.nightPhotos ?? "night", picture: s.picture ?? "", hour: isNum(s.hour) ? clamp(s.hour, 0, 24) : -1 },
-      scenery: { photo: sc.photo ?? "", mountains: sc.mountains ?? "", horizon: unit(sc.horizon, 0.45), cloud: sc.cloud ?? "#f3f8ff" },
+      scenery: { photo: sc.photo ?? "", stand: unit(sc.stand, 0.85), cloud: sc.cloud ?? "#f3f8ff" },
       ambience: { wind: unit(a.wind, 0.4), birds: unit(a.birds, 0.4), insects: unit(a.insects, 0.4) },
     },
   };

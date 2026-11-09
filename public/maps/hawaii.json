@@ -12,8 +12,7 @@
   },
   "scenery": {
     "photo": "/resorts/hawaii.webp",
-    "mountains": "",
-    "horizon": 0.33,
+    "stand": 0.85,
     "cloud": "#f6f9ff"
   },
   "ambience": {
