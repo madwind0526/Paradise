@@ -124,6 +124,7 @@ function refreshSway() {
   swayKey = key;
   swayBtn.replaceChildren(ic(still ? Anchor : Waves));
   swayBtn.classList.toggle("off", forced || !sound.musicOn);
+  musicBtn.replaceChildren(ic(sound.musicOn ? Pause : Play)); // the centre button shows what a press will do
 }
 hud.append(
   clock,
