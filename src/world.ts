@@ -278,6 +278,8 @@ export class World {
   dist = 6; // camera distance from the figure
   private windLevel = 0.4;
   private t = 0;
+  swaying = true; // set by the HUD: false lets the floating figure settle and stay still
+  private swayAmt = 1; // 0..1, eased toward `swaying` so the figure stops and starts smoothly
   private bloom!: UnrealBloomPass;
   private composer!: EffectComposer;
   private sky = new Sky();
@@ -474,6 +476,7 @@ export class World {
   update(dt: number, hour: number) {
     if ((this.map?.sky.hour ?? -1) >= 0) hour = this.map!.sky.hour; // a map can keep one time of day (a sunset that never ends)
     this.t += dt;
+    this.swayAmt += ((this.swaying ? 1 : 0) - this.swayAmt) * Math.min(1, dt * 2.5);
 
     this.updateSky(hour);
 
@@ -493,10 +496,11 @@ export class World {
       if (low < groundY) cy += groundY - low;
     }
     const f = this.look.floats;
-    const bob = f ? 0.1 + 0.09 * Math.sin(this.t * 1.1) + 0.04 * Math.sin(this.t * 0.5 + 1) : 0; // hovers 10 cm above the sand line and sways around that
+    const A = this.swayAmt;
+    const bob = f ? 0.1 + A * (0.09 * Math.sin(this.t * 1.1) + 0.04 * Math.sin(this.t * 0.5 + 1)) : 0; // hovers 10 cm above the sand line and sways around that
     this.figure.scale.set(S2, S2, 1);
-    this.figure.position.set(cx + (f ? 0.03 * Math.sin(this.t * 0.7) : 0), cy + bob, 0);
-    this.figure.rotation.set(0, this.yaw, f ? 0.025 * Math.sin(this.t * 0.8) : 0);
+    this.figure.position.set(cx + (f ? A * 0.03 * Math.sin(this.t * 0.7) : 0), cy + bob, 0);
+    this.figure.rotation.set(0, this.yaw, f ? A * 0.025 * Math.sin(this.t * 0.8) : 0);
 
     const target = new THREE.Vector3(0, 0.9, 0);
     const d = this.dist, p = this.pitch;

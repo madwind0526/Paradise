@@ -1,6 +1,6 @@
 import "@fontsource/orbitron/600.css";
 import "./style.css";
-import { Coffee, PersonStanding, ArrowUp, Check, Folder, Info, Music, SlidersVertical, Clock, FolderOpen, Bird, Pause, Plus, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Globe, ListMusic, Mountain, Play, Settings as Cog, Trash2, User, Volume2, VolumeX, Wind, X } from "lucide";
+import { Anchor, Waves, Heart, Coffee, PersonStanding, ArrowUp, Check, Folder, Info, Music, SlidersVertical, Clock, FolderOpen, Bird, Pause, Plus, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Globe, ListMusic, Mountain, Play, Settings as Cog, Trash2, User, Volume2, VolumeX, Wind, X } from "lucide";
 import { validateMap } from "../shared/spec.mjs";
 import { DEFAULT_TRACK, SUPPORT_URL, asset } from "./config";
 import { EQ_LABELS, EQ_PRESETS, Sound } from "./audio";
@@ -18,6 +18,7 @@ const FolderMusic = registerPlugin<{ pickFolder(): Promise<{ path: string }>; li
 const isApp = Capacitor.isNativePlatform();
 const fileUrl = (path: string) => Capacitor.convertFileSrc("file://" + path.split("/").map(encodeURIComponent).join("/"));
 
+const DRAIN_SECONDS = 360, REFILL_SECONDS = 30; // swaying time until exhausted, and time to rest back to full
 const CYCLES = [3, 6, 9, 12, 24];
 const s = load();
 if (!CYCLES.includes(s.cycle)) s.cycle = 24;
@@ -109,12 +110,28 @@ function applyVolumes() {
   vol.classList.toggle("dim", muted);
 }
 const volBox = h("div", "vol", muteBtn, h("div", "vslide", vol));
+// Like Voyager: a heart with the stamina number, and a button that toggles between still (anchor) and swaying (waves).
+// Swaying drains stamina; when it is used up the figure holds still until the stamina is full again.
+let started = false, wantSway = true, forced = false, stamina = 100;
+const stamNum = h("span", "", "100");
+const stam = h("div", "stam", ic(Heart), stamNum);
+const swayBtn = btn(Anchor, "흔들림 / 고정", () => { if (!forced && sound.musicOn) wantSway = !wantSway; });
+const isStill = () => !started || !sound.musicOn || forced || !wantSway;
+let swayKey = "";
+function refreshSway() {
+  const still = isStill(), key = `${still}${forced}${sound.musicOn}`;
+  if (key === swayKey) return;
+  swayKey = key;
+  swayBtn.replaceChildren(ic(still ? Anchor : Waves));
+  swayBtn.classList.toggle("off", forced || !sound.musicOn);
+}
 hud.append(
   clock,
+  stam,
   player,
   h("div", "corner tr", btn(User, "프로필", () => openProfile())),
   h("div", "corner bl", btn(Cog, "설정", () => openSettings())),
-  h("div", "corner br", volBox),
+  h("div", "corner br", volBox, swayBtn),
 );
 
 const startLayer = h("div", "start", btn(Play, "시작", async () => {
@@ -124,6 +141,7 @@ const startLayer = h("div", "start", btn(Play, "시작", async () => {
     if (window.open(location.href, "paradise", `popup,width=650,height=${hh}`)) return;
   }
   startLayer.remove();
+  started = true;
   sound.start();
   sound.setMusic(true);
   if (matchMedia("(pointer: coarse)").matches) {
@@ -483,6 +501,14 @@ function tick(now: number) {
   if (now - lastSync > 60000) { syncClock(); lastSync = now; }
 
   const hr = (curMap().sky.hour ?? -1) >= 0 ? curMap().sky.hour : hourNow();
+  const still = isStill();
+  stamina = Math.min(100, Math.max(0, stamina + (still ? 100 / REFILL_SECONDS : -100 / DRAIN_SECONDS) * dt));
+  if (stamina <= 0) forced = true; else if (forced && stamina >= 100) forced = false;
+  world.swaying = !isStill();
+  const sn = String(Math.round(stamina));
+  if (stamNum.textContent !== sn) stamNum.textContent = sn;
+  stam.classList.toggle("empty", forced);
+  refreshSway();
   world.update(dt, hr);
   if (world.sunUp !== lastSunUp) { lastSunUp = world.sunUp; void pickSky(); } // dusk or dawn: a new random picture
   sound.setNight(world.night);
