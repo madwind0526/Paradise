@@ -225,3 +225,7 @@ YouTube API나 재생 목록 설정이 끝나기 전에 `setMusic(true)`가 빈 
 ## 접속 모니터링(Cloudflare)이 Voyager와 같은 사이트로 집계됨
 
 `index.html`의 Cloudflare Web Analytics 블록은 Voyager에서 그대로 복사되었고 토큰도 같다. `github.io`에서 열릴 때만 켜지므로 로컬, 앱, 데스크톱에는 영향이 없다. Paradise를 따로 보려면 Cloudflare에서 새 사이트를 만들고 토큰을 바꾼다.
+
+## 기본 YouTube 재생목록의 간헐적 오류 2
+
+기본 URL의 `list=PLCqwmfitbQCY`는 유효하다. IFrame에 재생목록 ID만 전달했을 때 새 브라우저 세션에 따라 163곡이 로드되거나 `api.invalidparam` 오류로 재생목록이 비었다. 실패한 세션에서 같은 URL의 `v=1t39vq3LdRs`를 `videoId`로 함께 전달하자 163곡이 재생됐다. URL에 영상 ID가 있으면 재생목록 ID와 함께 전달하도록 수정했다. 브라우저에서 다음 곡, 일시정지·재개, 단일 영상 URL을 확인했다. Electron과 Android는 확인하지 않았다.
