@@ -2,6 +2,6 @@
 
 ## Current Focus
 
-- Current: default YouTube playlist now sends both the watch video's ID and playlist ID to the IFrame player.
-- Verified: fresh browser loaded 163 tracks; Next, pause/resume, and single-video playback worked. Build passed.
-- Next: verify Electron and Android playback when those runtimes are available; some figure/map combinations still need visual checks, and Paradise shares Voyager's Cloudflare token.
+- Current: v1.1.1 is published with Android APK and Windows installer; phone updated to versionCode 3.
+- Verified: 9 tests, web/Android/Windows builds, APK installation and app launch.
+- Next: verify actual YouTube playback on the phone; some figure/map combinations still need visual checks.
